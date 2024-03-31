@@ -175,7 +175,7 @@ class SparseOcc(MVXTwoStageDetector):
         return self.simple_test_pts(img_feats, img_metas, rescale=rescale)
 
     def simple_test_online(self, img_metas, img=None, rescale=False):
-        self.fp16_enabled = True
+        self.fp16_enabled = False
         assert len(img_metas) == 1  # batch_size = 1
 
         B, N, C, H, W = img.shape
