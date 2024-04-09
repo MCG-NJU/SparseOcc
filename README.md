@@ -9,7 +9,8 @@ This is the official PyTorch implementation for our paper:
 
 ## News
 
-* 2024-03-31: We release the code and pretrained weights. An updated arXiv version will be released soon, please stay tuned.
+* 2024-04-09: An updated arXiv version ([https://arxiv.org/abs/2312.17118v3](https://arxiv.org/abs/2312.17118v3) has been released.
+* 2024-03-31: We release the code and pretrained weights.
 * 2023-12-30: We release the paper.
 
 ## Model Zoo
