@@ -1,5 +1,6 @@
 import os
 import mmcv
+import glob
 import numpy as np
 from mmdet.datasets.builder import PIPELINES
 from numpy.linalg import inv
@@ -166,18 +167,18 @@ class LoadMultiViewImageFromMultiSweeps(object):
 
 @PIPELINES.register_module()
 class LoadOccGTFromFile(object):
-    def __init__(self, num_classes=18, ignore_class_names=[]):
+    def __init__(self, gt_root, num_classes=18, inst_class_ids=[]):
         self.num_classes = num_classes
-        self.occ_class_names = [
-            'others', 'barrier', 'bicycle', 'bus', 'car', 'construction_vehicle',
-            'motorcycle', 'pedestrian', 'traffic_cone', 'trailer', 'truck',
-            'driveable_surface', 'other_flat', 'sidewalk',
-            'terrain', 'manmade', 'vegetation', 'free'
-        ]
-        self.ignore_class_names = ignore_class_names
+        self.inst_class_ids = inst_class_ids
+        self.gt_filepaths = sorted(glob.glob(os.path.join(gt_root, '*/*/*.npz')))
+        
+        self.token2path = {}
+        for gt_path in self.gt_filepaths:
+            token = gt_path.split('/')[-2]
+            self.token2path[token] = gt_path
 
     def __call__(self, results):
-        occ_labels = np.load(results['occ_path'])
+        occ_labels = np.load(self.token2path[results['sample_idx']])
         semantics = occ_labels['semantics']  # [200, 200, 16]
         mask_lidar = occ_labels['mask_lidar'].astype(np.bool_)  # [200, 200, 16]
         mask_camera = occ_labels['mask_camera'].astype(np.bool_)  # [200, 200, 16]
@@ -186,14 +187,17 @@ class LoadOccGTFromFile(object):
         results['mask_camera'] = mask_camera
   
         # instance GT
-        '''assert 'instances' in occ_labels.keys()
-        instances = occ_labels['instances']
-        instance_class_ids = [self.num_classes - 1]  # the 0-th class is always free class
-        for i in range(1, instances.max() + 1):
-            class_id = np.unique(semantics[instances == i])
-            assert class_id.shape[0] == 1, "each instance must belong to only one class"
-            instance_class_ids.append(class_id[0])
-        instance_class_ids = np.array(instance_class_ids)'''
+        if 'instances' in occ_labels.keys():
+            instances = occ_labels['instances']
+            instance_class_ids = [self.num_classes - 1]  # the 0-th class is always free class
+            for i in range(1, instances.max() + 1):
+                class_id = np.unique(semantics[instances == i])
+                assert class_id.shape[0] == 1, "each instance must belong to only one class"
+                instance_class_ids.append(class_id[0])
+            instance_class_ids = np.array(instance_class_ids)
+        else:
+            instances = None
+            instance_class_ids = None
 
         instance_count = 0
         final_instance_class_ids = []
@@ -203,7 +207,8 @@ class LoadOccGTFromFile(object):
             if np.sum(semantics == class_id) == 0:
                 continue
 
-            if False and self.occ_class_names[class_id] in ['car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'motorcycle', 'bicycle', 'pedestrian']:
+            if class_id in self.inst_class_ids:
+                assert instances is not None, 'instance annotation not found'
                 # treat as instances
                 for instance_id in range(len(instance_class_ids)):
                     if instance_class_ids[instance_id] != class_id:
@@ -211,10 +216,6 @@ class LoadOccGTFromFile(object):
                     final_instances[instances == instance_id] = instance_count
                     instance_count += 1
                     final_instance_class_ids.append(class_id)
-            elif self.occ_class_names[class_id] in self.ignore_class_names:
-                # treat as free
-                final_instances[semantics == class_id] = 255
-                semantics[semantics == class_id] = self.num_classes - 1
             else:
                 # treat as semantics
                 final_instances[semantics == class_id] = instance_count

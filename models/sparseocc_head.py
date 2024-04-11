@@ -18,6 +18,7 @@ class SparseOccHead(nn.Module):
                  occ_size=None,
                  pc_range=None,
                  loss_cfgs=None,
+                 panoptic=False,
                  **kwargs):
         super(SparseOccHead, self).__init__()
         self.num_classes = len(class_names)
@@ -27,6 +28,7 @@ class SparseOccHead(nn.Module):
         self.embed_dims = embed_dims
         self.score_threshold = 0.3
         self.overlap_threshold = 0.8
+        self.panoptic = panoptic
 
         self.transformer = build_transformer(transformer)
         self.criterions = {k: build_loss(loss_cfg) for k, loss_cfg in loss_cfgs.items()}
@@ -113,12 +115,13 @@ class SparseOccHead(nn.Module):
         occ_indices = outs['occ_preds'][-1][0]
         
         sem_pred = self.merge_semseg(mask_cls, mask_pred)  # [B, C, N]
-        #pano_inst, pano_sem = self.merge_panoseg(mask_cls, mask_pred)  # [B, C, N]
-
         outs['sem_pred'] = sem_pred
         outs['occ_loc'] = occ_indices
-        # outs['pano_inst'] = pano_inst
-        # outs['pano_sem'] = pano_sem
+
+        if self.panoptic:
+            pano_inst, pano_sem = self.merge_panoseg(mask_cls, mask_pred)  # [B, C, N]
+            outs['pano_inst'] = pano_inst
+            outs['pano_sem'] = pano_sem
         
         return outs
     

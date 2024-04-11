@@ -63,11 +63,8 @@ class NuSceneOcc(NuScenesDataset):
             lidar2ego_rotation=lidar2ego_rotation_mat,
         )
 
-        # TODO: check if we need ego2lidar and global2ego
-        if 'occ_path' in info:
-            input_dict['occ_path'] = info['occ_path']
-            ego2lidar = transform_matrix(lidar2ego_translation, Quaternion(lidar2ego_rotation), inverse=True)
-            input_dict['ego2lidar'] = [ego2lidar for _ in range(6)]
+        ego2lidar = transform_matrix(lidar2ego_translation, Quaternion(lidar2ego_rotation), inverse=True)
+        input_dict['ego2lidar'] = [ego2lidar for _ in range(6)]
 
         if self.modality['use_camera']:
             img_paths = []

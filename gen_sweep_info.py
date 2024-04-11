@@ -81,57 +81,22 @@ def add_sweep_info(nusc, sample_infos):
     return sample_infos
 
 
-def add_occ_info(nusc, sample_infos):
-    token2name = dict()
-    for s in nusc.scene:
-        token2name[s['token']] = s['name']
-
-    for curr_id in range(len(sample_infos['infos'])):
-        sample = nusc.get('sample', sample_infos['infos'][curr_id]['token'])
-        sample_data = nusc.get('sample_data', sample['data']['LIDAR_TOP'])
-
-        scene_token = sample['scene_token']
-        scene_name = token2name[scene_token]
-        sample_token = sample_data['sample_token']
-
-        occ_path = os.path.join(args.data_root, 'occupancy', scene_name, sample_token, 'labels.npz')
-        assert os.path.exists(occ_path)
-
-        sample_infos['infos'][curr_id]['occ_path'] = occ_path
-
-    return sample_infos
-
-
 if __name__ == '__main__':
     nusc = NuScenes(args.version, args.data_root)
 
     if args.version == 'v1.0-trainval':
         sample_infos = pickle.load(open(os.path.join(args.data_root, 'nuscenes_infos_train.pkl'), 'rb'))
         sample_infos = add_sweep_info(nusc, sample_infos)
-        sample_infos = add_occ_info(nusc, sample_infos)
-        mmcv.dump(sample_infos, os.path.join(args.data_root, 'nuscenes_infos_train_sweep_occ.pkl'))
+        mmcv.dump(sample_infos, os.path.join(args.data_root, 'nuscenes_infos_train_sweep.pkl'))
 
         sample_infos = pickle.load(open(os.path.join(args.data_root, 'nuscenes_infos_val.pkl'), 'rb'))
         sample_infos = add_sweep_info(nusc, sample_infos)
-        sample_infos = add_occ_info(nusc, sample_infos)
-        mmcv.dump(sample_infos, os.path.join(args.data_root, 'nuscenes_infos_val_sweep_occ.pkl'))
+        mmcv.dump(sample_infos, os.path.join(args.data_root, 'nuscenes_infos_val_sweep.pkl'))
 
     elif args.version == 'v1.0-test':
         sample_infos = pickle.load(open(os.path.join(args.data_root, 'nuscenes_infos_test.pkl'), 'rb'))
         sample_infos = add_sweep_info(nusc, sample_infos)
-        sample_infos = add_occ_info(nusc, sample_infos)
-        mmcv.dump(sample_infos, os.path.join(args.data_root, 'nuscenes_infos_test_sweep_occ.pkl'))
-
-    elif args.version == 'v1.0-mini':
-        sample_infos = pickle.load(open(os.path.join(args.data_root, 'nuscenes_infos_train_mini.pkl'), 'rb'))
-        sample_infos = add_sweep_info(nusc, sample_infos)
-        sample_infos = add_occ_info(nusc, sample_infos)
-        mmcv.dump(sample_infos, os.path.join(args.data_root, 'nuscenes_infos_train_mini_sweep_occ.pkl'))
-
-        sample_infos = pickle.load(open(os.path.join(args.data_root, 'nuscenes_infos_val_mini.pkl'), 'rb'))
-        sample_infos = add_sweep_info(nusc, sample_infos)
-        sample_infos = add_occ_info(nusc, sample_infos)
-        mmcv.dump(sample_infos, os.path.join(args.data_root, 'nuscenes_infos_val_mini_sweep_occ.pkl'))
+        mmcv.dump(sample_infos, os.path.join(args.data_root, 'nuscenes_infos_test_sweep.pkl'))
 
     else:
         raise ValueError
