@@ -20,20 +20,13 @@ class EgoPoseDataset(Dataset):
         self.scene_frames = {}
 
         for info in data_infos:
-            scene_token = self.get_scene_token(info)
-            if scene_token not in self.scene_frames:
-                self.scene_frames[scene_token] = []
-            self.scene_frames[scene_token].append(info)
+            scene_name = info['scene_name']
+            if scene_name not in self.scene_frames:
+                self.scene_frames[scene_name] = []
+            self.scene_frames[scene_name].append(info)
 
     def __len__(self):
         return len(self.data_infos)
-
-    def get_scene_token(self, info):
-        if 'scene_token' in info:
-            scene_name = info['scene_token']
-        else:
-            scene_name = info['occ_path'].split('occupancy/')[-1].split('/')[0]
-        return scene_name
 
     def get_ego_from_lidar(self, info):
         ego_from_lidar = trans_matrix(

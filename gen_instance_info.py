@@ -60,7 +60,7 @@ def convert_to_nusc_box(bboxes, lift_center=False, wlh_margin=0.0):
     return results
 
 
-def get_ego_points(occ_size, pc_range):  # points in ego coord
+def meshgrid3d(occ_size, pc_range):  # points in ego coord
     W, H, D = occ_size
     
     xs = torch.linspace(0.5, W - 0.5, W).view(W, 1, 1).expand(W, H, D) / W
@@ -91,7 +91,7 @@ def process_add_instance_info(sample):
     instance_gt = np.zeros(occ_gt.shape).astype(np.uint8)
     instance_id = 1
     
-    pts = get_ego_points(occ_size, point_cloud_range).numpy()
+    pts = meshgrid3d(occ_size, point_cloud_range).numpy()
     
     # filter out free voxels to accelerate
     valid_idx = np.where(occ_gt < num_classes - 1)
@@ -214,14 +214,14 @@ def add_instance_info(sample_infos):
 if __name__ == '__main__':
     if args.version == 'v1.0-trainval':
         sample_infos = pickle.load(open(os.path.join(args.nusc_root, 'nuscenes_infos_train_sweep.pkl'), 'rb'))
-        sample_infos = add_instance_info(sample_infos)
+        add_instance_info(sample_infos)
 
         sample_infos = pickle.load(open(os.path.join(args.nusc_root, 'nuscenes_infos_val_sweep.pkl'), 'rb'))
-        sample_infos = add_instance_info(sample_infos)
+        add_instance_info(sample_infos)
 
     elif args.version == 'v1.0-test':
         sample_infos = pickle.load(open(os.path.join(args.nusc_root, 'nuscenes_infos_test_sweep.pkl'), 'rb'))
-        sample_infos = add_instance_info(sample_infos)
+        add_instance_info(sample_infos)
 
     else:
         raise ValueError

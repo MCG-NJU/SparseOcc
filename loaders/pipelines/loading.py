@@ -167,18 +167,12 @@ class LoadMultiViewImageFromMultiSweeps(object):
 
 @PIPELINES.register_module()
 class LoadOccGTFromFile(object):
-    def __init__(self, gt_root, num_classes=18, inst_class_ids=[]):
+    def __init__(self, num_classes=18, inst_class_ids=[]):
         self.num_classes = num_classes
         self.inst_class_ids = inst_class_ids
-        self.gt_filepaths = sorted(glob.glob(os.path.join(gt_root, '*/*/*.npz')))
-        
-        self.token2path = {}
-        for gt_path in self.gt_filepaths:
-            token = gt_path.split('/')[-2]
-            self.token2path[token] = gt_path
-
+    
     def __call__(self, results):
-        occ_labels = np.load(self.token2path[results['sample_idx']])
+        occ_labels = np.load(results['occ_path'])
         semantics = occ_labels['semantics']  # [200, 200, 16]
         mask_lidar = occ_labels['mask_lidar'].astype(np.bool_)  # [200, 200, 16]
         mask_camera = occ_labels['mask_camera'].astype(np.bool_)  # [200, 200, 16]

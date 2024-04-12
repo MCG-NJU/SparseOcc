@@ -1,5 +1,6 @@
 dataset_type = 'NuSceneOcc'
 dataset_root = 'data/nuscenes/'
+occ_gt_root = 'data/nuscenes/occ3d'
 
 # If point cloud range is changed, the models should also change their point
 # cloud range accordingly
@@ -41,8 +42,8 @@ _num_frames_ = 8
 _num_queries_ = 100
 _topk_training_ = [4000, 16000, 64000]
 _topk_testing_ = [2000, 8000, 32000]
-
 _topk_training_ = _topk_testing_
+
 
 model = dict(
     type='SparseOcc',
@@ -112,7 +113,7 @@ ida_aug_conf = {
 train_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=False, color_type='color'),
     dict(type='LoadMultiViewImageFromMultiSweeps', sweeps_num=_num_frames_ - 1),
-    dict(type='LoadOccGTFromFile', gt_root='data/nuscenes/occ3d', num_classes=len(occ_class_names)),
+    dict(type='LoadOccGTFromFile', num_classes=len(occ_class_names)),
     dict(type='RandomTransformImage', ida_aug_conf=ida_aug_conf, training=True),
     dict(type='DefaultFormatBundle3D', class_names=det_class_names),
     dict(type='Collect3D', keys=['img', 'voxel_semantics', 'voxel_instances', 'instance_class_ids'],  # other keys: 'mask_camera'
@@ -122,7 +123,7 @@ train_pipeline = [
 test_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=False, color_type='color'),
     dict(type='LoadMultiViewImageFromMultiSweeps', sweeps_num=_num_frames_ - 1, test_mode=True),
-    dict(type='LoadOccGTFromFile', gt_root='data/nuscenes/occ3d', num_classes=len(occ_class_names)),
+    dict(type='LoadOccGTFromFile', num_classes=len(occ_class_names)),
     dict(type='RandomTransformImage', ida_aug_conf=ida_aug_conf, training=False),
     dict(type='DefaultFormatBundle3D', class_names=det_class_names),
     dict(type='Collect3D', keys=['img', 'voxel_semantics', 'voxel_instances', 'instance_class_ids'],
@@ -134,6 +135,7 @@ data = dict(
     train=dict(
         type=dataset_type,
         data_root=dataset_root,
+        occ_gt_root=occ_gt_root,
         ann_file=dataset_root + 'nuscenes_infos_train_sweep.pkl',
         pipeline=train_pipeline,
         classes=det_class_names,
@@ -142,6 +144,7 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=dataset_root,
+        occ_gt_root=occ_gt_root,
         ann_file=dataset_root + 'nuscenes_infos_val_sweep.pkl',
         pipeline=test_pipeline,
         classes=det_class_names,
@@ -150,6 +153,7 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=dataset_root,
+        occ_gt_root=occ_gt_root,
         ann_file=dataset_root + 'nuscenes_infos_test_sweep.pkl',
         pipeline=test_pipeline,
         classes=det_class_names,
@@ -199,7 +203,7 @@ log_config = dict(
 )
 
 # evaluation
-eval_config = dict(interval=1)
+eval_config = dict(interval=total_epochs)
 
 # other flags
 debug = False

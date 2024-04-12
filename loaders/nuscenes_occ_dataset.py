@@ -1,7 +1,8 @@
 import os
 import mmcv
-import numpy as np
+import glob
 import torch
+import numpy as np
 from tqdm import tqdm
 from mmdet.datasets import DATASETS
 from mmdet3d.datasets import NuScenesDataset
@@ -15,9 +16,20 @@ from .ego_pose_dataset import EgoPoseDataset
 
 @DATASETS.register_module()
 class NuSceneOcc(NuScenesDataset):    
-    def __init__(self, *args, **kwargs):
+    def __init__(self, occ_gt_root, *args, **kwargs):
         super().__init__(filter_empty_gt=False, *args, **kwargs)
+        self.occ_gt_root = occ_gt_root
         self.data_infos = self.load_annotations(self.ann_file)
+
+        self.token2scene = {}
+        for gt_path in glob.glob(os.path.join(self.occ_gt_root, '*/*/*.npz')):
+            token = gt_path.split('/')[-2]
+            scene_name = gt_path.split('/')[-3]
+            self.token2scene[token] = scene_name
+
+        for i in range(len(self.data_infos)):
+            scene_name = self.token2scene[self.data_infos[i]['token']]
+            self.data_infos[i]['scene_name'] = scene_name
 
     def collect_sweeps(self, index, into_past=150, into_future=0):
         all_sweeps_prev = []
@@ -65,6 +77,7 @@ class NuSceneOcc(NuScenesDataset):
 
         ego2lidar = transform_matrix(lidar2ego_translation, Quaternion(lidar2ego_rotation), inverse=True)
         input_dict['ego2lidar'] = [ego2lidar for _ in range(6)]
+        input_dict['occ_path'] = os.path.join(self.occ_gt_root, info['scene_name'], info['token'], 'labels.npz')
 
         if self.modality['use_camera']:
             img_paths = []
@@ -124,7 +137,8 @@ class NuSceneOcc(NuScenesDataset):
             data_id = sample_tokens.index(token)
             info = self.data_infos[data_id]
 
-            occ_gt = np.load(info['occ_path'], allow_pickle=True)
+            occ_path = os.path.join(self.occ_gt_root, info['scene_name'], info['token'], 'labels.npz')
+            occ_gt = np.load(occ_path, allow_pickle=True)
             gt_semantics = occ_gt['semantics']
 
             occ_pred = occ_results[data_id]
@@ -141,7 +155,7 @@ class NuSceneOcc(NuScenesDataset):
         
         return calc_rayiou(occ_preds, occ_gts, lidar_origins)
 
-    def format_results(self, occ_results,submission_prefix,**kwargs):
+    def format_results(self, occ_results, submission_prefix, **kwargs):
         if submission_prefix is not None:
             mmcv.mkdir_or_exist(submission_prefix)
 

@@ -28,7 +28,7 @@ This is the official PyTorch implementation for our paper:
 
 | Setting  | Pretrain | Training Cost | RayIoU | FPS | Weights |
 |----------|:--------:|:-------------:|:-----------------:|:---:|:-------:|
-| [r50_nuimg_704x256_8f](configs/r50_nuimg_704x256_8f.py) | [nuImg](https://download.openmmlab.com/mmdetection3d/v0.1.0_models/nuimages_semseg/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth) | 1d4h (8xA100) | 35.0 | 17.3 | [gdrive](https://drive.google.com/file/d/18qZMIJMxU-3UZi7nU1_Q-hvvrtjlIN_p/view?usp=sharing) |
+| [r50_nuimg_704x256_8f](configs/r50_nuimg_704x256_8f.py) | [nuImg](https://download.openmmlab.com/mmdetection3d/v0.1.0_models/nuimages_semseg/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth) | 1d4h, ~12GB Memory | 35.0 | 17.3 | [gdrive](https://drive.google.com/file/d/18qZMIJMxU-3UZi7nU1_Q-hvvrtjlIN_p/view?usp=sharing) |
 
 * FPS is measured with Intel(R) Xeon(R) Platinum 8369B CPU and NVIDIA A100-SXM4-80GB GPU (PyTorch `fp32` backend, including data loading).
 * We will release more settings in the future.
