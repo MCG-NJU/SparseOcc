@@ -51,9 +51,4 @@ checkpoints
 pretrain
 ckpts
 occ_result
-visual_dir
-*.png
-*.jpg
-*.log
-settings
-run.sh
+wandb
