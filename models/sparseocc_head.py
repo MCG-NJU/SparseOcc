@@ -202,9 +202,9 @@ class SparseOccHead(nn.Module):
                         else:
                             stuff_memory_list[int(pred_class)] = current_segment_id + 1
 
+                    current_segment_id += 1
                     instance_seg[mask] = current_segment_id
                     semantic_seg[mask] = pred_class
-                    current_segment_id += 1
         
         instance_seg = instance_seg.unsqueeze(0)
         semantic_seg = semantic_seg.unsqueeze(0)

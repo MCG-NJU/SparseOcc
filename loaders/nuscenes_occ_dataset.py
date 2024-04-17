@@ -10,7 +10,7 @@ from nuscenes.eval.common.utils import Quaternion
 from nuscenes.utils.geometry_utils import transform_matrix
 from torch.utils.data import DataLoader
 from models.utils import sparse2dense
-from .ray_metrics import main as calc_rayiou
+from .ray_metrics import main_rayiou, main_raypq
 from .ego_pose_dataset import EgoPoseDataset
 
 
@@ -115,22 +115,12 @@ class NuSceneOcc(NuScenesDataset):
         return input_dict
 
     def evaluate(self, occ_results, runner=None, show_dir=None, **eval_kwargs):
-        occ_gts = []
-        occ_preds = []
-        lidar_origins = []
-
+        occ_gts, occ_preds, inst_gts, inst_preds, lidar_origins = [], [], [], [], []
         print('\nStarting Evaluation...')
 
-        data_loader = DataLoader(
-            EgoPoseDataset(self.data_infos),
-            batch_size=1,
-            shuffle=False,
-            num_workers=8
-        )
-        
         sample_tokens = [info['token'] for info in self.data_infos]
 
-        for i, batch in enumerate(data_loader):
+        for batch in DataLoader(EgoPoseDataset(self.data_infos), num_workers=8):
             token = batch[0][0]
             output_origin = batch[1]
             
@@ -146,14 +136,31 @@ class NuSceneOcc(NuScenesDataset):
             occ_loc = torch.from_numpy(occ_pred['occ_loc'].astype(np.int64))  # [B, N, 3]
             
             occ_size = list(gt_semantics.shape)
-            dense_sem_pred, _ = sparse2dense(occ_loc, sem_pred, dense_shape=occ_size, empty_value=17)
-            dense_sem_pred = dense_sem_pred.squeeze(0).numpy()
+            sem_pred, _ = sparse2dense(occ_loc, sem_pred, dense_shape=occ_size, empty_value=17)
+            sem_pred = sem_pred.squeeze(0).numpy()
+
+            if 'pano_inst' in occ_pred.keys():
+                pano_inst = torch.from_numpy(occ_pred['pano_inst'])
+                pano_sem = torch.from_numpy(occ_pred['pano_sem'])
+
+                pano_inst, _ = sparse2dense(occ_loc, pano_inst, dense_shape=occ_size, empty_value=0)
+                pano_sem, _ = sparse2dense(occ_loc, pano_sem, dense_shape=occ_size, empty_value=17)
+                pano_inst = pano_inst.squeeze(0).numpy()
+                pano_sem = pano_sem.squeeze(0).numpy()
+                sem_pred = pano_sem
+
+                gt_instances = occ_gt['instances']
+                inst_gts.append(gt_instances)
+                inst_preds.append(pano_inst)
 
             lidar_origins.append(output_origin)
             occ_gts.append(gt_semantics)
-            occ_preds.append(dense_sem_pred)
+            occ_preds.append(sem_pred)
         
-        return calc_rayiou(occ_preds, occ_gts, lidar_origins)
+        if len(inst_preds) > 0:
+            return main_raypq(occ_preds, occ_gts, inst_preds, inst_gts, lidar_origins)
+        else:
+            return main_rayiou(occ_preds, occ_gts, lidar_origins)
 
     def format_results(self, occ_results, submission_prefix, **kwargs):
         if submission_prefix is not None:
@@ -162,6 +169,7 @@ class NuSceneOcc(NuScenesDataset):
         for index, occ_pred in enumerate(tqdm(occ_results)):
             info = self.data_infos[index]
             sample_token = info['token']
-            save_path=os.path.join(submission_prefix, '{}.npz'.format(sample_token))
-            np.savez_compressed(save_path,occ_pred.astype(np.uint8))
+            save_path = os.path.join(submission_prefix, '{}.npz'.format(sample_token))
+            np.savez_compressed(save_path, occ_pred.astype(np.uint8))
+        
         print('\nFinished.')

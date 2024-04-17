@@ -53,8 +53,7 @@ class EgoPoseDataset(Dataset):
         ref_lidar_from_global = self.get_global_pose(info, inverse=True)
         ref_ego_from_lidar = self.get_ego_from_lidar(info)
 
-        scene_token = self.get_scene_token(info)
-        scene_frame = self.scene_frames[scene_token]
+        scene_frame = self.scene_frames[info['scene_name']]
         ref_index = scene_frame.index(info)
 
         # NOTE: getting output frames
