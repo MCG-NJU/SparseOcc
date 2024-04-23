@@ -9,7 +9,7 @@ from loaders.old_metrics import Metric_mIoU
 
 def main(args):
     pred_filepaths = sorted(glob.glob(os.path.join(args.pred_dir, '*.npz')))
-    gt_filepaths = sorted(glob.glob(os.path.join(args.gt_dir, '*/*/*.npz')))
+    gt_filepaths = sorted(glob.glob(os.path.join(args.data_root, 'occ3d', '*/*/*.npz')))
 
     eval_metrics_miou = Metric_mIoU(
         num_classes=18,
@@ -35,8 +35,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--data-root", type=str, default='data/nuscenes')
     parser.add_argument("--pred-dir", type=str)
-    parser.add_argument("--gt-dir", type=str)
     args = parser.parse_args()
 
     torch.random.manual_seed(0)

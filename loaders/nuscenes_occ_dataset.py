@@ -158,7 +158,9 @@ class NuSceneOcc(NuScenesDataset):
             occ_preds.append(sem_pred)
         
         if len(inst_preds) > 0:
-            return main_raypq(occ_preds, occ_gts, inst_preds, inst_gts, lidar_origins)
+            results = main_raypq(occ_preds, occ_gts, inst_preds, inst_gts, lidar_origins)
+            results.update(main_rayiou(occ_preds, occ_gts, lidar_origins))
+            return results
         else:
             return main_rayiou(occ_preds, occ_gts, lidar_origins)
 
