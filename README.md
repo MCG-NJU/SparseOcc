@@ -5,7 +5,8 @@ This is the official PyTorch implementation for our paper:
 > [**SparseOcc: Fully Sparse 3D Occupancy Prediction**](https://arxiv.org/abs/2312.17118)<br>
 > :school: Presented by Nanjing University and Shanghai AI Lab<br>
 > :email: Primary contact: Haisong Liu (afterthat97@gmail.com)<br>
-> :trophy: [CVPR 2024 Autonomous Driving Challenge - Occupancy and Flow](https://opendrivelab.com/challenge2024/#occupancy_and_flow)
+> :trophy: [CVPR 2024 Autonomous Driving Challenge - Occupancy and Flow](https://opendrivelab.com/challenge2024/#occupancy_and_flow)<br>
+> :book: 第三方中文解读: [自动驾驶之心](https://zhuanlan.zhihu.com/p/675811281)，[AIming](https://zhuanlan.zhihu.com/p/691549750)。谢谢你们！
 
 ## Highlights
 
