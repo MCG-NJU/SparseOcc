@@ -1,6 +1,6 @@
 dataset_type = 'NuSceneOcc'
 dataset_root = 'data/nuscenes/'
-occ_gt_root = 'data/nuscenes/occ3d'
+occ_gt_root = 'data/openocc_v2'
 
 # If point cloud range is changed, the models should also change their point
 # cloud range accordingly
@@ -20,8 +20,8 @@ det_class_names = [
 ]
 
 occ_class_names = [
-    'others', 'barrier', 'bicycle', 'bus', 'car', 'construction_vehicle',
-    'motorcycle', 'pedestrian', 'traffic_cone', 'trailer', 'truck',
+    'car', 'truck', 'trailer', 'bus', 'construction_vehicle',
+    'bicycle', 'motorcycle', 'pedestrian', 'traffic_cone', 'barrier',
     'driveable_surface', 'other_flat', 'sidewalk',
     'terrain', 'manmade', 'vegetation', 'free'
 ]

@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from models.utils import sparse2dense
 from .ray_metrics import main_rayiou, main_raypq
 from .ego_pose_dataset import EgoPoseDataset
-
+from configs.r50_nuimg_704x256_8f import occ_class_names
 
 @DATASETS.register_module()
 class NuSceneOcc(NuScenesDataset):    
@@ -135,8 +135,9 @@ class NuSceneOcc(NuScenesDataset):
             sem_pred = torch.from_numpy(occ_pred['sem_pred'])  # [B, N]
             occ_loc = torch.from_numpy(occ_pred['occ_loc'].astype(np.int64))  # [B, N, 3]
             
+            free_id = len(occ_class_names) - 1
             occ_size = list(gt_semantics.shape)
-            sem_pred, _ = sparse2dense(occ_loc, sem_pred, dense_shape=occ_size, empty_value=17)
+            sem_pred, _ = sparse2dense(occ_loc, sem_pred, dense_shape=occ_size, empty_value=free_id)
             sem_pred = sem_pred.squeeze(0).numpy()
 
             if 'pano_inst' in occ_pred.keys():
@@ -144,7 +145,7 @@ class NuSceneOcc(NuScenesDataset):
                 pano_sem = torch.from_numpy(occ_pred['pano_sem'])
 
                 pano_inst, _ = sparse2dense(occ_loc, pano_inst, dense_shape=occ_size, empty_value=0)
-                pano_sem, _ = sparse2dense(occ_loc, pano_sem, dense_shape=occ_size, empty_value=17)
+                pano_sem, _ = sparse2dense(occ_loc, pano_sem, dense_shape=occ_size, empty_value=free_id)
                 pano_inst = pano_inst.squeeze(0).numpy()
                 pano_sem = pano_sem.squeeze(0).numpy()
                 sem_pred = pano_sem

@@ -35,7 +35,7 @@ def calc_voxel_decoder_loss(voxel_semantics, occ_loc_i, occ_pred_i, seg_pred_i, 
         seg_pred_i_sparse = seg_pred_dense[sparse_mask]
         voxel_semantics_sparse = voxel_semantics[sparse_mask]
 
-        non_free_mask = (voxel_semantics_sparse != 17)
+        non_free_mask = (voxel_semantics_sparse != num_classes)
         seg_pred_i_sparse = seg_pred_i_sparse[non_free_mask]
         voxel_semantics_sparse = voxel_semantics_sparse[non_free_mask]
 
@@ -68,8 +68,8 @@ def compute_occ_loss(occ_pred, occ_target, mask=None, pos_weight=1.0, mask_camer
     
     # 2-cls recon
     occ_target = occ_target.clone()
-    occ_target[occ_target < 17] = 1
-    occ_target[occ_target == 17] = 0
+    occ_target[occ_target < 16] = 1
+    occ_target[occ_target == 16] = 0
 
     return F.binary_cross_entropy_with_logits(occ_pred, occ_target.float(), weight=cls_weight)
 
