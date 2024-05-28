@@ -288,7 +288,7 @@ class Mask2FormerLoss(nn.Module):
             pad_tgt_class = torch.full(
                 (src_class.shape[0], ), self.num_classes - 1, dtype=torch.int64, device=class_pred.device
             )   # [Q]
-            pad_tgt_class[src_idx] = tgt_class
+            pad_tgt_class[src_idx] = tgt_class[tgt_idx]
             
             # only calculates loss mask for aligned pairs
             loss_mask, loss_dice = self.loss_masks(src_mask, tgt_mask, avg_factor=avg_factor, mask_camera=mask_camera_b)
