@@ -14,12 +14,6 @@ dvr = load("dvr", sources=["lib/dvr/dvr.cpp", "lib/dvr/dvr.cu"], verbose=True, e
 _pc_range = [-40, -40, -1.0, 40, 40, 5.4]
 _voxel_size = 0.4
 
-occ_class_names = [
-    'others', 'barrier', 'bicycle', 'bus', 'car', 'construction_vehicle',
-    'motorcycle', 'pedestrian', 'traffic_cone', 'trailer', 'truck',
-    'driveable_surface', 'other_flat', 'sidewalk',
-    'terrain', 'manmade', 'vegetation', 'free'
-]
 
 # https://github.com/tarashakhurana/4d-occ-forecasting/blob/ff986082cd6ea10e67ab7839bf0e654736b3f4e2/test_fgbg.py#L29C1-L46C16
 def get_rendered_pcds(origin, points, tindex, pred_dist):
@@ -80,7 +74,7 @@ def generate_lidar_rays():
     return np.array(lidar_rays, dtype=np.float32)
 
 
-def process_one_sample(sem_pred, lidar_rays, output_origin, instance_pred=None):
+def process_one_sample(sem_pred, lidar_rays, output_origin, instance_pred=None, occ_class_names=None):
     # lidar origin in ego coordinate
     # lidar_origin = torch.tensor([[[0.9858, 0.0000, 1.8402]]])
     T = output_origin.shape[1]
@@ -141,7 +135,7 @@ def process_one_sample(sem_pred, lidar_rays, output_origin, instance_pred=None):
     return pred_pcds_t.numpy()
 
 
-def calc_rayiou(pcd_pred_list, pcd_gt_list):
+def calc_rayiou(pcd_pred_list, pcd_gt_list, occ_class_names):
     thresholds = [1, 2, 4]
 
     gt_cnt = np.zeros([len(occ_class_names)])
@@ -178,7 +172,7 @@ def calc_rayiou(pcd_pred_list, pcd_gt_list):
     return iou_list
 
 
-def main_rayiou(sem_pred_list, sem_gt_list, lidar_origin_list):
+def main_rayiou(sem_pred_list, sem_gt_list, lidar_origin_list, occ_class_names):
     torch.cuda.empty_cache()
 
     # generate lidar rays
@@ -190,8 +184,8 @@ def main_rayiou(sem_pred_list, sem_gt_list, lidar_origin_list):
         sem_pred = torch.from_numpy(np.reshape(sem_pred, [200, 200, 16]))
         sem_gt = torch.from_numpy(np.reshape(sem_gt, [200, 200, 16]))
 
-        pcd_pred = process_one_sample(sem_pred, lidar_rays, lidar_origins)
-        pcd_gt = process_one_sample(sem_gt, lidar_rays, lidar_origins)
+        pcd_pred = process_one_sample(sem_pred, lidar_rays, lidar_origins, occ_class_names=occ_class_names)
+        pcd_gt = process_one_sample(sem_gt, lidar_rays, lidar_origins, occ_class_names=occ_class_names)
 
         # evalute on non-free rays
         valid_mask = (pcd_gt[:, 0].astype(np.int32) != len(occ_class_names) - 1)
@@ -202,7 +196,7 @@ def main_rayiou(sem_pred_list, sem_gt_list, lidar_origin_list):
         pcd_pred_list.append(pcd_pred)
         pcd_gt_list.append(pcd_gt)
 
-    iou_list = calc_rayiou(pcd_pred_list, pcd_gt_list)
+    iou_list = calc_rayiou(pcd_pred_list, pcd_gt_list, occ_class_names)
     rayiou = np.nanmean(iou_list)
     rayiou_0 = np.nanmean(iou_list[0])
     rayiou_1 = np.nanmean(iou_list[1])
@@ -234,10 +228,11 @@ def main_rayiou(sem_pred_list, sem_gt_list, lidar_origin_list):
     }
 
 
-def main_raypq(sem_pred_list, sem_gt_list, inst_pred_list, inst_gt_list, lidar_origin_list):
+def main_raypq(sem_pred_list, sem_gt_list, inst_pred_list, inst_gt_list, lidar_origin_list, occ_class_names):
     torch.cuda.empty_cache()
 
     eval_metrics_pq = Metric_RayPQ(
+        occ_class_names=occ_class_names,
         num_classes=len(occ_class_names),
         thresholds=[1, 2, 4]
     )
@@ -254,8 +249,8 @@ def main_raypq(sem_pred_list, sem_gt_list, inst_pred_list, inst_gt_list, lidar_o
         inst_pred = torch.from_numpy(np.reshape(inst_pred, [200, 200, 16]))
         inst_gt = torch.from_numpy(np.reshape(inst_gt, [200, 200, 16]))
 
-        pcd_pred = process_one_sample(sem_pred, lidar_rays, lidar_origins, instance_pred=inst_pred)
-        pcd_gt = process_one_sample(sem_gt, lidar_rays, lidar_origins, instance_pred=inst_gt)
+        pcd_pred = process_one_sample(sem_pred, lidar_rays, lidar_origins, instance_pred=inst_pred, occ_class_names=occ_class_names)
+        pcd_gt = process_one_sample(sem_gt, lidar_rays, lidar_origins, instance_pred=inst_gt, occ_class_names=occ_class_names)
 
         # evalute on non-free rays
         valid_mask = (pcd_gt[:, 0].astype(np.int32) != len(occ_class_names) - 1)

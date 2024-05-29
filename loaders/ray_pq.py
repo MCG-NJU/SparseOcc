@@ -3,20 +3,16 @@ from prettytable import PrettyTable
 
 
 class Metric_RayPQ:
-    def __init__(self, 
+    def __init__(self,
+                 occ_class_names, 
                  num_classes=18,
                  thresholds=[1, 2, 4]):
         """
         Args:
             ignore_index (llist): Class ids that not be considered in pq counting.
         """
-        if num_classes == 18:
-            self.class_names = [
-                'others','barrier', 'bicycle', 'bus', 'car', 'construction_vehicle',
-                'motorcycle', 'pedestrian', 'traffic_cone', 'trailer', 'truck',
-                'driveable_surface', 'other_flat', 'sidewalk',
-                'terrain', 'manmade', 'vegetation','free'
-            ]
+        if num_classes == 18 or num_classes == 17:
+            self.class_names = occ_class_names
         else:
             raise ValueError
         
