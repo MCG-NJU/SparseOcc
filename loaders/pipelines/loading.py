@@ -174,11 +174,11 @@ class LoadOccGTFromFile(object):
     def __call__(self, results):
         occ_labels = np.load(results['occ_path'])
         semantics = occ_labels['semantics']  # [200, 200, 16]
-        mask_lidar = occ_labels['mask_lidar'].astype(np.bool_)  # [200, 200, 16]
-        mask_camera = occ_labels['mask_camera'].astype(np.bool_)  # [200, 200, 16]
+        # mask_lidar = occ_labels['mask_lidar'].astype(np.bool_)  # [200, 200, 16]
+        # mask_camera = occ_labels['mask_camera'].astype(np.bool_)  # [200, 200, 16]
 
-        results['mask_lidar'] = mask_lidar
-        results['mask_camera'] = mask_camera
+        # results['mask_lidar'] = mask_lidar
+        # results['mask_camera'] = mask_camera
   
         # instance GT
         if 'instances' in occ_labels.keys():

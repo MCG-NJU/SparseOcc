@@ -71,6 +71,7 @@ class SparseOccHead(nn.Module):
                     occ_pred_i[b:b + 1],
                     seg_pred_i[b:b + 1] if seg_pred_i is not None else None,
                     scale,
+                    self.num_classes,
                     mask_camera[b:b + 1] if mask_camera is not None else None
                 )
                 for loss_key in loss_dict_i_b.keys():

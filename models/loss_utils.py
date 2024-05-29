@@ -6,7 +6,7 @@ from mmdet.core import reduce_mean
 from .utils import sparse2dense
 
 
-def calc_voxel_decoder_loss(voxel_semantics, occ_loc_i, occ_pred_i, seg_pred_i, scale, mask_camera=None):
+def calc_voxel_decoder_loss(voxel_semantics, occ_loc_i, occ_pred_i, seg_pred_i, scale, num_classes=18, mask_camera=None):
     loss_dict = dict()
     assert voxel_semantics.shape[0] == 1  # bs = 1
     voxel_semantics = voxel_semantics.long()
@@ -18,15 +18,15 @@ def calc_voxel_decoder_loss(voxel_semantics, occ_loc_i, occ_pred_i, seg_pred_i, 
     occ_pred_dense = F.interpolate(occ_pred_dense[:, None], scale_factor=scale)[:, 0]  # [B, W, H, D]
     sparse_mask = F.interpolate(sparse_mask[:, None].float(), scale_factor=scale)[:, 0].bool()
 
-    loss_dict['loss_occ'] = compute_occ_loss(occ_pred_dense, voxel_semantics, sparse_mask, mask_camera=mask_camera)
+    loss_dict['loss_occ'] = compute_occ_loss(occ_pred_dense, voxel_semantics, sparse_mask, num_classes=num_classes, mask_camera=mask_camera)
 
     if seg_pred_i is not None:  # semantic prediction
-        num_classes = seg_pred_i.shape[-1]
+        assert seg_pred_i.shape[-1] == num_classes-1
         
         seg_pred_dense, _ = sparse2dense(
             occ_loc_i, seg_pred_i,
-            dense_shape=[200 // scale, 200 // scale, 16 // scale, num_classes],
-            empty_value=torch.zeros((num_classes)).to(seg_pred_i)
+            dense_shape=[200 // scale, 200 // scale, 16 // scale, num_classes-1],
+            empty_value=torch.zeros((num_classes-1)).to(seg_pred_i)
         )
         seg_pred_dense = seg_pred_dense.permute(0, 4, 1, 2, 3)   # [B, CLS, W, H, D]
         seg_pred_dense = F.interpolate(seg_pred_dense, scale_factor=scale)
@@ -35,7 +35,7 @@ def calc_voxel_decoder_loss(voxel_semantics, occ_loc_i, occ_pred_i, seg_pred_i, 
         seg_pred_i_sparse = seg_pred_dense[sparse_mask]
         voxel_semantics_sparse = voxel_semantics[sparse_mask]
 
-        non_free_mask = (voxel_semantics_sparse != 17)
+        non_free_mask = (voxel_semantics_sparse != num_classes-1)
         seg_pred_i_sparse = seg_pred_i_sparse[non_free_mask]
         voxel_semantics_sparse = voxel_semantics_sparse[non_free_mask]
 
@@ -44,7 +44,7 @@ def calc_voxel_decoder_loss(voxel_semantics, occ_loc_i, occ_pred_i, seg_pred_i, 
     return loss_dict
 
 
-def compute_occ_loss(occ_pred, occ_target, mask=None, pos_weight=1.0, mask_camera=None):  # 2-cls occupancy pred
+def compute_occ_loss(occ_pred, occ_target, mask=None, pos_weight=1.0, num_classes=18, mask_camera=None):  # 2-cls occupancy pred
     '''
     :param occ_pred: (Tensor), predicted occupancy, (N)
     :param occ_target: (Tensor), ground truth occupancy, (N)
@@ -67,9 +67,10 @@ def compute_occ_loss(occ_pred, occ_target, mask=None, pos_weight=1.0, mask_camer
     cls_weight = torch.index_select(cls_weight, 0, occ_target.long())
     
     # 2-cls recon
+    free_id = num_classes - 1
     occ_target = occ_target.clone()
-    occ_target[occ_target < 17] = 1
-    occ_target[occ_target == 17] = 0
+    occ_target[occ_target < free_id] = 1
+    occ_target[occ_target == free_id] = 0
 
     return F.binary_cross_entropy_with_logits(occ_pred, occ_target.float(), weight=cls_weight)
 
