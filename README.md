@@ -149,23 +149,32 @@ Multi-GPU evaluation:
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 torchrun --nproc_per_node 8 val.py --config configs/sparseocc_r50_nuimg_704x256_8f.py --weights checkpoints/sparseocc_r50_nuimg_704x256_8f.pth
 ```
-## Offline Evaluation
-1. Save the predictions (shape=[200x200x16], dtype=np.uint8) with the compressed npz format. An example code for saving predictions:
+
+## Standalone Evaluation
+
+If you want to evaluate your own model using RayIoU, please follow the steps below:
+
+1. Save the predictions (shape=`[200x200x16]`, dtype=`np.uint8`) with the compressed `npz` format. For example:
+
 ```
-save_path = os.path.join(save_dir, sample_token+'.npz')
+save_path = os.path.join(save_dir, sample_token + '.npz')
 np.savez_compressed(save_path, pred=sem_pred)
 ``` 
-2. The filename of saved predictions is `sample_token.npz`,  For example:
+
+2. The filename for each sample is `sample_token.npz`,  for example:
+
 ```
-prediction/sparseocc
+prediction/your_model
 ├── 000681a060c04755a1537cf83b53ba57.npz
 ├── 000868a72138448191b4092f75ed7776.npz
 ├── 0017c2623c914571a1ff2a37f034ffd7.npz
 ├── ...
 ```
-3. Run `ray_metrics.py` or `old_metrics.py` to evaluate on the RayIoU or the old voxel-based mIoU.
+
+3. Run `ray_metrics.py` to evaluate on the RayIoU:
+
 ```
-python ray_metrics.py --pred-dir prediction/sparseocc
+python ray_metrics.py --pred-dir prediction/your_model
 ```
 
 ## Timing
