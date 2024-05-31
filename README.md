@@ -20,7 +20,7 @@ This is the official PyTorch implementation for our paper:
 
 ## News
 
-* 2024-05-29: We add support [OpenOcc v2](configs/r50_nuimg_704x256_8f_openocc.py) dataset (without occupancy flow).
+* 2024-05-29: We add support for [OpenOcc v2](configs/r50_nuimg_704x256_8f_openocc.py) dataset (without occupancy flow).
 * 2024-04-11: The panoptic version of SparseOcc ([configs/r50_nuimg_704x256_8f_pano.py](configs/r50_nuimg_704x256_8f_pano.py)) is released.
 * 2024-04-09: An updated arXiv version [https://arxiv.org/abs/2312.17118v3](https://arxiv.org/abs/2312.17118v3) has been released.
 * 2024-03-31: We release the code and pretrained weights.
