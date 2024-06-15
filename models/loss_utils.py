@@ -7,70 +7,32 @@ from .utils import sparse2dense
 import numpy as np
 from torch.cuda.amp import autocast
 from torch.autograd import Variable
-from mmcv.ops import sigmoid_focal_loss as _sigmoid_focal_loss
-from mmdet.models.losses.utils import weight_reduce_loss
 try:
     from itertools import  ifilterfalse
 except ImportError: # py3k
     from itertools import  filterfalse as ifilterfalse
 
 nusc_class_frequencies = np.array([
- 944004,
- 1897170,
- 152386,
- 2391677,
- 16957802,
- 724139,
- 189027,
- 2074468,
- 413451,
- 2384460,
- 5916653,
- 175883646,
- 4275424,
- 51393615,
- 61411620,
- 105975596,
- 116424404,
- 1892500630
+    944004,
+    1897170,
+    152386,
+    2391677,
+    16957802,
+    724139,
+    189027,
+    2074468,
+    413451,
+    2384460,
+    5916653,
+    175883646,
+    4275424,
+    51393615,
+    61411620,
+    105975596,
+    116424404,
+    1892500630
  ])
 
-def calc_voxel_decoder_loss(voxel_semantics, occ_loc_i, occ_pred_i, seg_pred_i, scale, num_classes=18, mask_camera=None):
-    loss_dict = dict()
-    assert voxel_semantics.shape[0] == 1  # bs = 1
-    voxel_semantics = voxel_semantics.long()
-
-    occ_pred_dense, sparse_mask = sparse2dense(
-        occ_loc_i, occ_pred_i,
-        dense_shape=[200 // scale, 200 // scale, 16 // scale]
-    )
-    occ_pred_dense = F.interpolate(occ_pred_dense[:, None], scale_factor=scale)[:, 0]  # [B, W, H, D]
-    sparse_mask = F.interpolate(sparse_mask[:, None].float(), scale_factor=scale)[:, 0].bool()
-
-    loss_dict['loss_occ'] = compute_occ_loss(occ_pred_dense, voxel_semantics, sparse_mask, num_classes=num_classes, mask_camera=mask_camera)
-
-    if seg_pred_i is not None:  # semantic prediction
-        assert seg_pred_i.shape[-1] == num_classes-1
-        
-        seg_pred_dense, _ = sparse2dense(
-            occ_loc_i, seg_pred_i,
-            dense_shape=[200 // scale, 200 // scale, 16 // scale, num_classes-1],
-            empty_value=torch.zeros((num_classes-1)).to(seg_pred_i)
-        )
-        seg_pred_dense = seg_pred_dense.permute(0, 4, 1, 2, 3)   # [B, CLS, W, H, D]
-        seg_pred_dense = F.interpolate(seg_pred_dense, scale_factor=scale)
-        seg_pred_dense = seg_pred_dense.permute(0, 2, 3, 4, 1)   # [B, W, H, D, CLS]
-
-        seg_pred_i_sparse = seg_pred_dense[sparse_mask]
-        voxel_semantics_sparse = voxel_semantics[sparse_mask]
-
-        non_free_mask = (voxel_semantics_sparse != num_classes-1)
-        seg_pred_i_sparse = seg_pred_i_sparse[non_free_mask]
-        voxel_semantics_sparse = voxel_semantics_sparse[non_free_mask]
-
-        loss_dict['loss_sem'] = F.cross_entropy(seg_pred_i_sparse, voxel_semantics_sparse)
-
-    return loss_dict
 
 def get_voxel_decoder_loss_input(voxel_semantics, occ_loc_i, seg_pred_i, scale, num_classes=18):
     assert voxel_semantics.shape[0] == 1  # bs = 1
@@ -93,38 +55,6 @@ def get_voxel_decoder_loss_input(voxel_semantics, occ_loc_i, seg_pred_i, scale, 
         voxel_semantics_sparse = voxel_semantics[sparse_mask]  # [K]
 
     return seg_pred_i_sparse, voxel_semantics_sparse, sparse_mask
-
-
-
-def compute_occ_loss(occ_pred, occ_target, mask=None, pos_weight=1.0, num_classes=18, mask_camera=None):  # 2-cls occupancy pred
-    '''
-    :param occ_pred: (Tensor), predicted occupancy, (N)
-    :param occ_target: (Tensor), ground truth occupancy, (N)
-    :param mask: (Bool Tensor), mask, (N)
-    '''
-    occ_pred = occ_pred.view(-1)
-    occ_target = occ_target.view(-1)
-    assert occ_pred.shape[0] == occ_target.shape[0]
-    
-    if mask is not None:
-        assert mask.dtype == torch.bool
-        mask = mask.view(-1)
-        occ_pred = occ_pred[mask]
-        occ_target = occ_target[mask]
-
-    # balance class distribution by assigning different weights to each class
-    cls_count = torch.bincount(occ_target)  # [18]
-    cls_weight = cls_count.sum().float() / cls_count
-    cls_weight[:-1] *= pos_weight
-    cls_weight = torch.index_select(cls_weight, 0, occ_target.long())
-    
-    # 2-cls recon
-    free_id = num_classes - 1
-    occ_target = occ_target.clone()
-    occ_target[occ_target < free_id] = 1
-    occ_target[occ_target == free_id] = 0
-
-    return F.binary_cross_entropy_with_logits(occ_pred, occ_target.float(), weight=cls_weight)
 
 
 def compute_scal_loss(pred, gt, class_id, reverse=False, ignore_index=255):
@@ -398,271 +328,6 @@ def flatten_probas(probas, labels, ignore=None):
     vprobas = probas[valid.nonzero().squeeze()]
     vlabels = labels[valid]
     return vprobas, vlabels
-
-# This method is only for debugging
-def py_sigmoid_focal_loss(pred,
-                          target,
-                          weight=None,
-                          gamma=2.0,
-                          alpha=0.25,
-                          reduction='mean',
-                          avg_factor=None):
-    """PyTorch version of `Focal Loss <https://arxiv.org/abs/1708.02002>`_.
-    Args:
-        pred (torch.Tensor): The prediction with shape (N, C), C is the
-            number of classes
-        target (torch.Tensor): The learning label of the prediction.
-        weight (torch.Tensor, optional): Sample-wise loss weight.
-        gamma (float, optional): The gamma for calculating the modulating
-            factor. Defaults to 2.0.
-        alpha (float, optional): A balanced form for Focal Loss.
-            Defaults to 0.25.
-        reduction (str, optional): The method used to reduce the loss into
-            a scalar. Defaults to 'mean'.
-        avg_factor (int, optional): Average factor that is used to average
-            the loss. Defaults to None.
-    """
-    pred_sigmoid = pred.sigmoid()
-    target = target.type_as(pred)
-    pt = (1 - pred_sigmoid) * target + pred_sigmoid * (1 - target)
-    focal_weight = (alpha * target + (1 - alpha) *
-                    (1 - target)) * pt.pow(gamma)
-    loss = F.binary_cross_entropy_with_logits(
-        pred, target, reduction='none') * focal_weight
-    if weight is not None:
-        if weight.shape != loss.shape:
-            if weight.size(0) == loss.size(0):
-                # For most cases, weight is of shape (num_priors, ),
-                #  which means it does not have the second axis num_class
-                weight = weight.view(-1, 1)
-            else:
-                # Sometimes, weight per anchor per class is also needed. e.g.
-                #  in FSAF. But it may be flattened of shape
-                #  (num_priors x num_class, ), while loss is still of shape
-                #  (num_priors, num_class).
-                assert weight.numel() == loss.numel()
-                weight = weight.view(loss.size(0), -1)
-        assert weight.ndim == loss.ndim
-        loss = loss * weight
-
-    loss = loss.sum(-1).mean()
-    # loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
-    return loss
-
-
-def py_focal_loss_with_prob(pred,
-                            target,
-                            weight=None,
-                            gamma=2.0,
-                            alpha=0.25,
-                            reduction='mean',
-                            avg_factor=None):
-    """PyTorch version of `Focal Loss <https://arxiv.org/abs/1708.02002>`_.
-    Different from `py_sigmoid_focal_loss`, this function accepts probability
-    as input.
-    Args:
-        pred (torch.Tensor): The prediction probability with shape (N, C),
-            C is the number of classes.
-        target (torch.Tensor): The learning label of the prediction.
-        weight (torch.Tensor, optional): Sample-wise loss weight.
-        gamma (float, optional): The gamma for calculating the modulating
-            factor. Defaults to 2.0.
-        alpha (float, optional): A balanced form for Focal Loss.
-            Defaults to 0.25.
-        reduction (str, optional): The method used to reduce the loss into
-            a scalar. Defaults to 'mean'.
-        avg_factor (int, optional): Average factor that is used to average
-            the loss. Defaults to None.
-    """
-    num_classes = pred.size(1)
-    target = F.one_hot(target, num_classes=num_classes + 1)
-    target = target[:, :num_classes]
-
-    target = target.type_as(pred)
-    pt = (1 - pred) * target + pred * (1 - target)
-    focal_weight = (alpha * target + (1 - alpha) *
-                    (1 - target)) * pt.pow(gamma)
-    loss = F.binary_cross_entropy(
-        pred, target, reduction='none') * focal_weight
-
-    if weight is not None:
-        if weight.shape != loss.shape:
-            if weight.size(0) == loss.size(0):
-                # For most cases, weight is of shape (num_priors, ),
-                #  which means it does not have the second axis num_class
-                weight = weight.view(-1, 1)
-            else:
-                # Sometimes, weight per anchor per class is also needed. e.g.
-                #  in FSAF. But it may be flattened of shape
-                #  (num_priors x num_class, ), while loss is still of shape
-                #  (num_priors, num_class).
-                assert weight.numel() == loss.numel()
-                weight = weight.view(loss.size(0), -1)
-        assert weight.ndim == loss.ndim
-    loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
-    return loss
-
-
-def sigmoid_focal_loss(pred,
-                       target,
-                       weight=None,
-                       gamma=2.0,
-                       alpha=0.25,
-                       reduction='mean',
-                       avg_factor=None):
-    r"""A wrapper of cuda version `Focal Loss
-    <https://arxiv.org/abs/1708.02002>`_.
-    Args:
-        pred (torch.Tensor): The prediction with shape (N, C), C is the number
-            of classes.
-        target (torch.Tensor): The learning label of the prediction.
-        weight (torch.Tensor, optional): Sample-wise loss weight.
-        gamma (float, optional): The gamma for calculating the modulating
-            factor. Defaults to 2.0.
-        alpha (float, optional): A balanced form for Focal Loss.
-            Defaults to 0.25.
-        reduction (str, optional): The method used to reduce the loss into
-            a scalar. Defaults to 'mean'. Options are "none", "mean" and "sum".
-        avg_factor (int, optional): Average factor that is used to average
-            the loss. Defaults to None.
-    """
-    # Function.apply does not accept keyword arguments, so the decorator
-    # "weighted_loss" is not applicable
-    loss = _sigmoid_focal_loss(pred.contiguous(), target.contiguous(), gamma,
-                               alpha, None, 'none')
-    if weight is not None:
-        if weight.shape != loss.shape:
-            if weight.size(0) == loss.size(0):
-                # For most cases, weight is of shape (num_priors, ),
-                #  which means it does not have the second axis num_class
-                weight = weight.view(-1, 1)
-            else:
-                # Sometimes, weight per anchor per class is also needed. e.g.
-                #  in FSAF. But it may be flattened of shape
-                #  (num_priors x num_class, ), while loss is still of shape
-                #  (num_priors, num_class).
-                assert weight.numel() == loss.numel()
-                weight = weight.view(loss.size(0), -1)
-        assert weight.ndim == loss.ndim
-        loss = loss * weight
-    loss = loss.sum(-1).mean()
-    # loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
-    return loss
-
-
-@LOSSES.register_module()
-class CustomFocalLoss(nn.Module):
-
-    def __init__(self,
-                 use_sigmoid=True,
-                 gamma=2.0,
-                 alpha=0.25,
-                 reduction='mean',
-                 loss_weight=100.0,
-                 activated=False):
-        """`Focal Loss <https://arxiv.org/abs/1708.02002>`_
-        Args:
-            use_sigmoid (bool, optional): Whether to the prediction is
-                used for sigmoid or softmax. Defaults to True.
-            gamma (float, optional): The gamma for calculating the modulating
-                factor. Defaults to 2.0.
-            alpha (float, optional): A balanced form for Focal Loss.
-                Defaults to 0.25.
-            reduction (str, optional): The method used to reduce the loss into
-                a scalar. Defaults to 'mean'. Options are "none", "mean" and
-                "sum".
-            loss_weight (float, optional): Weight of loss. Defaults to 1.0.
-            activated (bool, optional): Whether the input is activated.
-                If True, it means the input has been activated and can be
-                treated as probabilities. Else, it should be treated as logits.
-                Defaults to False.
-        """
-        super(CustomFocalLoss, self).__init__()
-        assert use_sigmoid is True, 'Only sigmoid focal loss supported now.'
-        self.use_sigmoid = use_sigmoid
-        self.gamma = gamma
-        self.alpha = alpha
-        self.reduction = reduction
-        self.loss_weight = loss_weight
-        self.activated = activated
-        H, W = 200, 200
-
-        xy, yx = torch.meshgrid([torch.arange(H)-H/2,  torch.arange(W)-W/2])
-        c = torch.stack([xy,yx], 2)
-        c = torch.norm(c, 2, -1)
-        c_max = c.max()
-        self.c = (c/c_max + 1).cuda()
-
-
-    def forward(self,
-                pred,
-                target,
-                sparse_mask=None,
-                weight=None,
-                avg_factor=None,
-                ignore_index=255,
-                reduction_override=None):
-        """Forward function.
-        Args:
-            pred (torch.Tensor): The prediction.
-            target (torch.Tensor): The learning label of the prediction.
-            weight (torch.Tensor, optional): The weight of loss for each
-                prediction. Defaults to None.
-            avg_factor (int, optional): Average factor that is used to average
-                the loss. Defaults to None.
-            reduction_override (str, optional): The reduction method used to
-                override the original reduction method of the loss.
-                Options are "none", "mean" and "sum".
-        Returns:
-            torch.Tensor: The calculated loss
-        """
-        B, H, W, D = sparse_mask.shape
-        c = self.c[None, :, :, None].repeat(B, 1, 1, D)
-        if sparse_mask is not None:
-            c = c[sparse_mask]
-        else:
-            c = c.reshape(-1)
-
-        visible_mask = (target!=ignore_index).reshape(-1).nonzero().squeeze(-1)
-        weight_mask = weight[None,:] * c[visible_mask, None]
-        # visible_mask[:, None]
-
-        num_classes = pred.size(1)
-        if sparse_mask is not None:
-            pred = pred.transpose(1, 2).reshape(-1, num_classes)[visible_mask]
-        else:
-            pred = pred.permute(0, 2, 3, 4, 1).reshape(-1, num_classes)[visible_mask]
-
-        target = target.reshape(-1)[visible_mask]
-
-        assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (
-            reduction_override if reduction_override else self.reduction)
-        if self.use_sigmoid:
-            if self.activated:
-                calculate_loss_func = py_focal_loss_with_prob
-            else:
-                if torch.cuda.is_available() and pred.is_cuda:
-                    calculate_loss_func = sigmoid_focal_loss
-                else:
-                    num_classes = pred.size(1)
-                    target = F.one_hot(target, num_classes=num_classes + 1)
-                    target = target[:, :num_classes]
-                    calculate_loss_func = py_sigmoid_focal_loss
-
-
-            loss_cls = self.loss_weight * calculate_loss_func(
-                pred,
-                target.to(torch.long),
-                weight_mask,
-                gamma=self.gamma,
-                alpha=self.alpha,
-                reduction=reduction,
-                avg_factor=avg_factor)
-
-        else:
-            raise NotImplementedError
-        return loss_cls
 
 # modified from https://github.com/facebookresearch/Mask2Former/blob/main/mask2former/modeling/criterion.py#L90
 @LOSSES.register_module()

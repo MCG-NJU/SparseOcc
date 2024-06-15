@@ -241,9 +241,9 @@ class LoadOccGTFromFile(object):
 
         return results
 
-# Modify from https://github.com/Yzichen/FlashOCC/blob/0b424984e922a006b4e4b99832f853e6dca0b591/projects/mmdet3d_plugin/datasets/pipelines/loading.py#L296
+# Modify from https://github.com/HuangJunJie2017/BEVDet/blob/58c2587a8f89a1927926f0bdb6cde2917c91a9a5/mmdet3d/datasets/pipelines/loading.py#L1177
 @PIPELINES.register_module()
-class LoadAnnotationsBEVDepth(object):
+class BEVAug(object):
     def __init__(self, bda_aug_conf, classes, is_train=True):
         self.bda_aug_conf = bda_aug_conf
         self.is_train = is_train
