@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,7 +7,7 @@ from mmcv.runner import force_fp32, auto_fp16
 from mmdet.models.builder import build_loss
 from mmdet.models.utils import build_transformer
 from .matcher import HungarianMatcher
-from .loss_utils import calc_voxel_decoder_loss
+from .loss_utils import CE_ssc_loss, lovasz_softmax, get_voxel_decoder_loss_input, nusc_class_frequencies
 
 
 @HEADS.register_module()
@@ -17,6 +18,7 @@ class SparseOccHead(nn.Module):
                  embed_dims=None,
                  occ_size=None,
                  pc_range=None,
+                 use_focal_loss=False,
                  loss_cfgs=None,
                  panoptic=False,
                  **kwargs):
@@ -29,10 +31,15 @@ class SparseOccHead(nn.Module):
         self.score_threshold = 0.3
         self.overlap_threshold = 0.8
         self.panoptic = panoptic
+        self.use_focal_loss = use_focal_loss
 
         self.transformer = build_transformer(transformer)
         self.criterions = {k: build_loss(loss_cfg) for k, loss_cfg in loss_cfgs.items()}
+        if self.use_focal_loss:
+            self.focal_loss = build_loss(dict(type='CustomFocalLoss'))
         self.matcher = HungarianMatcher(cost_class=2.0, cost_mask=5.0, cost_dice=5.0)
+
+        self.class_weights = torch.from_numpy(1 / np.log(nusc_class_frequencies + 0.001))
 
     def init_weights(self):
         self.transformer.init_weights()
@@ -62,18 +69,34 @@ class SparseOccHead(nn.Module):
             assert mask_camera.shape == voxel_semantics.shape
             assert mask_camera.dtype == torch.bool
         
-        for i, (occ_loc_i, occ_pred_i, seg_pred_i, _, scale) in enumerate(preds_dicts['occ_preds']):
+        for i, (occ_loc_i, _, seg_pred_i, _, scale) in enumerate(preds_dicts['occ_preds']):
             loss_dict_i = {}
             for b in range(B):
-                loss_dict_i_b = calc_voxel_decoder_loss(
+                loss_dict_i_b = {}
+                seg_pred_i_sparse, voxel_semantics_sparse, sparse_mask = get_voxel_decoder_loss_input(
                     voxel_semantics[b:b + 1],
                     occ_loc_i[b:b + 1],
-                    occ_pred_i[b:b + 1],
                     seg_pred_i[b:b + 1] if seg_pred_i is not None else None,
                     scale,
-                    self.num_classes,
-                    mask_camera[b:b + 1] if mask_camera is not None else None
+                    self.num_classes
                 )
+
+                loss_dict_i_b['loss_sem_lovasz'] = lovasz_softmax(torch.softmax(seg_pred_i_sparse, dim=1), voxel_semantics_sparse)
+
+                valid_mask = (voxel_semantics_sparse < 255)
+                seg_pred_i_sparse = seg_pred_i_sparse[valid_mask].transpose(0, 1).unsqueeze(0)  # [K, CLS] -> [B, CLS, K]
+                voxel_semantics_sparse = voxel_semantics_sparse[valid_mask].unsqueeze(0)  # [K] -> [B, K]
+
+                if 'loss_geo_scal' in self.criterions.keys():
+                    loss_dict_i_b['loss_geo_scal'] = self.criterions['loss_geo_scal'](seg_pred_i_sparse, voxel_semantics_sparse)  
+                if 'loss_sem_scal' in self.criterions.keys():
+                    loss_dict_i_b['loss_sem_scal'] = self.criterions['loss_sem_scal'](seg_pred_i_sparse, voxel_semantics_sparse)
+
+                if self.use_focal_loss:
+                    loss_dict_i_b['loss_sem_ce'] = self.focal_loss(seg_pred_i_sparse, voxel_semantics_sparse, sparse_mask, self.class_weights.type_as(seg_pred_i_sparse))
+                else:
+                    loss_dict_i_b['loss_sem_ce'] = CE_ssc_loss(seg_pred_i_sparse, voxel_semantics_sparse, self.class_weights.type_as(seg_pred_i_sparse))
+
                 for loss_key in loss_dict_i_b.keys():
                     loss_dict_i[loss_key] = loss_dict_i.get(loss_key, 0) + loss_dict_i_b[loss_key] / B
 
