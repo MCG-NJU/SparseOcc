@@ -61,7 +61,8 @@ class SparseVoxelDecoder(BaseModule):
                  num_levels=None,
                  num_classes=None,
                  semantic=False,
-                 topk=None,
+                 topk_training=None,
+                 topk_testing=None,
                  pc_range=None):
         super().__init__()
 
@@ -71,7 +72,8 @@ class SparseVoxelDecoder(BaseModule):
         self.pc_range = pc_range
         self.semantic = semantic
         self.voxel_dim = [200, 200, 16]
-        self.topk = topk
+        self.topk_training = topk_training
+        self.topk_testing = topk_testing
 
         self.decoder_layers = nn.ModuleList()
         self.lift_feat_heads = nn.ModuleList()
@@ -107,6 +109,8 @@ class SparseVoxelDecoder(BaseModule):
     def forward(self, mlvl_feats, img_metas):
         occ_preds = []
         
+        topk = self.topk_training if self.training else self.topk_testing
+        
         B = len(img_metas)
         # init query coords
         interval = 2 ** self.num_layers
@@ -132,7 +136,7 @@ class SparseVoxelDecoder(BaseModule):
 
             # sparsify
             occ_pred_2x = self.occ_pred_heads[i](query_feat_2x)  # [B, N*8, 1]
-            indices = torch.topk(occ_pred_2x.squeeze(-1), k=self.topk[i], dim=1)[1]  # [B, K]
+            indices = torch.topk(occ_pred_2x.squeeze(-1), k=topk[i], dim=1)[1]  # [B, K]
 
             occ_pred_2x = batch_indexing(occ_pred_2x, indices, layout='channel_last')  # [B, K, 1]
             query_coord_2x = batch_indexing(query_coord_2x, indices, layout='channel_last')  # [B, K, 3]
