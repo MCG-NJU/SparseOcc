@@ -20,6 +20,7 @@ This is the official PyTorch implementation for our paper:
 
 ## News
 
+* 2024-05-29: We add support for [OpenOcc v2](configs/r50_nuimg_704x256_8f_openocc.py) dataset (without occupancy flow).
 * 2024-04-11: The panoptic version of SparseOcc ([configs/r50_nuimg_704x256_8f_pano.py](configs/r50_nuimg_704x256_8f_pano.py)) is released.
 * 2024-04-09: An updated arXiv version [https://arxiv.org/abs/2312.17118v3](https://arxiv.org/abs/2312.17118v3) has been released.
 * 2024-03-31: We release the code and pretrained weights.
@@ -166,6 +167,33 @@ prediction/sparseocc
 3. Run `ray_metrics.py` or `old_metrics.py` to evaluate on the RayIoU or the old voxel-based mIoU.
 ```
 python ray_metrics.py --pred-dir prediction/sparseocc
+```
+
+## Standalone Evaluation
+
+If you want to evaluate your own model using RayIoU, please follow the steps below:
+
+1. Save the predictions (shape=`[200x200x16]`, dtype=`np.uint8`) with the compressed `npz` format. For example:
+
+```
+save_path = os.path.join(save_dir, sample_token + '.npz')
+np.savez_compressed(save_path, pred=sem_pred)
+``` 
+
+2. The filename for each sample is `sample_token.npz`,  for example:
+
+```
+prediction/your_model
+├── 000681a060c04755a1537cf83b53ba57.npz
+├── 000868a72138448191b4092f75ed7776.npz
+├── 0017c2623c914571a1ff2a37f034ffd7.npz
+├── ...
+```
+
+3. Run `ray_metrics.py` to evaluate on the RayIoU:
+
+```
+python ray_metrics.py --pred-dir prediction/your_model
 ```
 
 ## Timing
