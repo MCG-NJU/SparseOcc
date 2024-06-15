@@ -18,7 +18,6 @@ class SparseOccHead(nn.Module):
                  embed_dims=None,
                  occ_size=None,
                  pc_range=None,
-                 use_focal_loss=False,
                  loss_cfgs=None,
                  panoptic=False,
                  **kwargs):
@@ -31,12 +30,9 @@ class SparseOccHead(nn.Module):
         self.score_threshold = 0.3
         self.overlap_threshold = 0.8
         self.panoptic = panoptic
-        self.use_focal_loss = use_focal_loss
 
         self.transformer = build_transformer(transformer)
         self.criterions = {k: build_loss(loss_cfg) for k, loss_cfg in loss_cfgs.items()}
-        if self.use_focal_loss:
-            self.focal_loss = build_loss(dict(type='CustomFocalLoss'))
         self.matcher = HungarianMatcher(cost_class=2.0, cost_mask=5.0, cost_dice=5.0)
 
         self.class_weights = torch.from_numpy(1 / np.log(nusc_class_frequencies + 0.001))
@@ -92,10 +88,7 @@ class SparseOccHead(nn.Module):
                 if 'loss_sem_scal' in self.criterions.keys():
                     loss_dict_i_b['loss_sem_scal'] = self.criterions['loss_sem_scal'](seg_pred_i_sparse, voxel_semantics_sparse)
 
-                if self.use_focal_loss:
-                    loss_dict_i_b['loss_sem_ce'] = self.focal_loss(seg_pred_i_sparse, voxel_semantics_sparse, sparse_mask, self.class_weights.type_as(seg_pred_i_sparse))
-                else:
-                    loss_dict_i_b['loss_sem_ce'] = CE_ssc_loss(seg_pred_i_sparse, voxel_semantics_sparse, self.class_weights.type_as(seg_pred_i_sparse))
+                loss_dict_i_b['loss_sem_ce'] = CE_ssc_loss(seg_pred_i_sparse, voxel_semantics_sparse, self.class_weights.type_as(seg_pred_i_sparse))
 
                 for loss_key in loss_dict_i_b.keys():
                     loss_dict_i[loss_key] = loss_dict_i.get(loss_key, 0) + loss_dict_i_b[loss_key] / B

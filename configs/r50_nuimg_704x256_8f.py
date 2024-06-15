@@ -74,7 +74,6 @@ model = dict(
         embed_dims=_dim_,
         occ_size=occ_size,
         pc_range=point_cloud_range,
-        use_focal_loss=False,
         transformer=dict(
             type='SparseOccTransformer',
             embed_dims=_dim_,
@@ -131,7 +130,7 @@ bda_aug_conf = dict(
 train_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=False, color_type='color'),
     dict(type='LoadMultiViewImageFromMultiSweeps', sweeps_num=_num_frames_ - 1),
-    dict(type='LoadAnnotationsBEVDepth', bda_aug_conf=bda_aug_conf, classes=det_class_names, is_train=True),
+    dict(type='BEVAug', bda_aug_conf=bda_aug_conf, classes=det_class_names, is_train=True),
     dict(type='LoadOccGTFromFile', num_classes=len(occ_class_names)),
     dict(type='RandomTransformImage', ida_aug_conf=ida_aug_conf, training=True),
     dict(type='DefaultFormatBundle3D', class_names=det_class_names),
@@ -142,7 +141,7 @@ train_pipeline = [
 test_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=False, color_type='color'),
     dict(type='LoadMultiViewImageFromMultiSweeps', sweeps_num=_num_frames_ - 1, test_mode=True),
-    dict(type='LoadAnnotationsBEVDepth', bda_aug_conf=bda_aug_conf, classes=det_class_names, is_train=False),
+    dict(type='BEVAug', bda_aug_conf=bda_aug_conf, classes=det_class_names, is_train=False),
     dict(type='LoadOccGTFromFile', num_classes=len(occ_class_names)),
     dict(type='RandomTransformImage', ida_aug_conf=ida_aug_conf, training=False),
     dict(type='DefaultFormatBundle3D', class_names=det_class_names),
