@@ -5,7 +5,7 @@ from mmcv.cnn.bricks.transformer import FFN
 from .sparsebev_transformer import SparseBEVSelfAttention, SparseBEVSampling, AdaptiveMixing
 from .utils import DUMP, generate_grid, batch_indexing
 from .bbox.utils import encode_bbox
-
+import torch.nn.functional as F
 
 def index2point(coords, pc_range, voxel_size):
     """
@@ -77,7 +77,7 @@ class SparseVoxelDecoder(BaseModule):
 
         self.decoder_layers = nn.ModuleList()
         self.lift_feat_heads = nn.ModuleList()
-        self.occ_pred_heads = nn.ModuleList()
+        #self.occ_pred_heads = nn.ModuleList()
         
         if semantic:
             self.seg_pred_heads = nn.ModuleList()
@@ -96,10 +96,10 @@ class SparseVoxelDecoder(BaseModule):
                 nn.Linear(embed_dims, embed_dims * 8),
                 nn.ReLU(inplace=True)
             ))
-            self.occ_pred_heads.append(nn.Linear(embed_dims, 1))
+            #self.occ_pred_heads.append(nn.Linear(embed_dims, 1))
 
             if semantic:
-                self.seg_pred_heads.append(nn.Linear(embed_dims, num_classes-1))
+                self.seg_pred_heads.append(nn.Linear(embed_dims, num_classes))
 
     @torch.no_grad()
     def init_weights(self):
@@ -135,22 +135,30 @@ class SparseVoxelDecoder(BaseModule):
             query_feat_2x, query_coord_2x = upsample(query_feat, query_coord, interval // 2)
 
             # sparsify
-            occ_pred_2x = self.occ_pred_heads[i](query_feat_2x)  # [B, N*8, 1]
-            indices = torch.topk(occ_pred_2x.squeeze(-1), k=topk[i], dim=1)[1]  # [B, K]
+            # occ_pred_2x = self.occ_pred_heads[i](query_feat_2x)  # [B, N*8, 1]
+            # indices = torch.topk(occ_pred_2x.squeeze(-1), k=topk[i], dim=1)[1]  # [B, K]
 
-            occ_pred_2x = batch_indexing(occ_pred_2x, indices, layout='channel_last')  # [B, K, 1]
-            query_coord_2x = batch_indexing(query_coord_2x, indices, layout='channel_last')  # [B, K, 3]
-            query_feat_2x = batch_indexing(query_feat_2x, indices, layout='channel_last')  # [B, K, C]
+            # occ_pred_2x = batch_indexing(occ_pred_2x, indices, layout='channel_last')  # [B, K, 1]
+            # query_coord_2x = batch_indexing(query_coord_2x, indices, layout='channel_last')  # [B, K, 3]
+            # query_feat_2x = batch_indexing(query_feat_2x, indices, layout='channel_last')  # [B, K, C]
 
             if self.semantic:
                 seg_pred_2x = self.seg_pred_heads[i](query_feat_2x)  # [B, K, CLS]
             else:
                 seg_pred_2x = None
 
+            # sparsify after seg_pred
+            non_free_prob = 1 - F.softmax(seg_pred_2x, dim=-1)[..., -1]  # [B, K]
+            indices = torch.topk(non_free_prob, k=topk[i], dim=1)[1]  # [B, K]
+
+            query_coord_2x = batch_indexing(query_coord_2x, indices, layout='channel_last')  # [B, K, 3]
+            query_feat_2x = batch_indexing(query_feat_2x, indices, layout='channel_last')  # [B, K, C]
+            seg_pred_2x = batch_indexing(seg_pred_2x, indices, layout='channel_last')  # [B, K, CLS]
+
             # TODO: up_coords should be interval=1, scaling should be removed
             occ_preds.append((
                 torch.div(query_coord_2x, interval // 2, rounding_mode='trunc').long(),
-                occ_pred_2x.squeeze(-1),
+                None,
                 seg_pred_2x,
                 query_feat_2x,
                 interval // 2)
