@@ -37,13 +37,11 @@ input_modality = dict(
 _dim_ = 256
 _num_points_ = 4
 _num_groups_ = 4
-_num_layers_ = 4
+_num_layers_ = 2
 _num_frames_ = 8
 _num_queries_ = 100
 _topk_training_ = [4000, 16000, 64000]
 _topk_testing_ = [2000, 8000, 32000]
-_topk_training_ = _topk_testing_
-
 
 model = dict(
     type='SparseOcc',
@@ -51,7 +49,6 @@ model = dict(
         img_color_aug=True,  # Move some augmentations to GPU
         img_norm_cfg=img_norm_cfg,
         img_pad_cfg=dict(size_divisor=32)),
-    use_grid_mask=False,
     use_mask_camera=False,
     img_backbone=dict(
         type='ResNet',
@@ -97,6 +94,16 @@ model = dict(
                 loss_mask_weight=5.0,
                 loss_dice_weight=5.0,
             ),
+            loss_geo_scal=dict(
+                type='GeoScalLoss',
+                num_classes=len(occ_class_names),
+                loss_weight=1.0
+            ),
+            loss_sem_scal=dict(
+                type='SemScalLoss',
+                num_classes=len(occ_class_names),
+                loss_weight=1.0
+            )
         ),
     ),
 )
@@ -107,12 +114,20 @@ ida_aug_conf = {
     'bot_pct_lim': (0.0, 0.0),
     'rot_lim': (0.0, 0.0),
     'H': 900, 'W': 1600,
-    'rand_flip': False,
+    'rand_flip': True,
 }
+
+bda_aug_conf = dict(
+    rot_lim=(-22.5, 22.5),
+    scale_lim=(1., 1.),
+    flip_dx_ratio=0.5,
+    flip_dy_ratio=0.5
+)
 
 train_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=False, color_type='color'),
     dict(type='LoadMultiViewImageFromMultiSweeps', sweeps_num=_num_frames_ - 1),
+    dict(type='BEVAug', bda_aug_conf=bda_aug_conf, classes=det_class_names, is_train=True),
     dict(type='LoadOccGTFromFile', num_classes=len(occ_class_names)),
     dict(type='RandomTransformImage', ida_aug_conf=ida_aug_conf, training=True),
     dict(type='DefaultFormatBundle3D', class_names=det_class_names),
@@ -123,6 +138,7 @@ train_pipeline = [
 test_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=False, color_type='color'),
     dict(type='LoadMultiViewImageFromMultiSweeps', sweeps_num=_num_frames_ - 1, test_mode=True),
+    dict(type='BEVAug', bda_aug_conf=bda_aug_conf, classes=det_class_names, is_train=False),
     dict(type='LoadOccGTFromFile', num_classes=len(occ_class_names)),
     dict(type='RandomTransformImage', ida_aug_conf=ida_aug_conf, training=False),
     dict(type='DefaultFormatBundle3D', class_names=det_class_names),
@@ -140,7 +156,8 @@ data = dict(
         pipeline=train_pipeline,
         classes=det_class_names,
         modality=input_modality,
-        test_mode=False),
+        test_mode=False
+    ),
     val=dict(
         type=dataset_type,
         data_root=dataset_root,
@@ -149,7 +166,8 @@ data = dict(
         pipeline=test_pipeline,
         classes=det_class_names,
         modality=input_modality,
-        test_mode=True),
+        test_mode=True
+    ),
     test=dict(
         type=dataset_type,
         data_root=dataset_root,
@@ -158,12 +176,13 @@ data = dict(
         pipeline=test_pipeline,
         classes=det_class_names,
         modality=input_modality,
-        test_mode=True),
+        test_mode=True
+    ),
 )
 
 optimizer = dict(
     type='AdamW',
-    lr=2e-4,
+    lr=5e-4,
     paramwise_cfg=dict(
         custom_keys={
             'img_backbone': dict(lr_mult=0.1),
@@ -174,13 +193,15 @@ optimizer = dict(
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 
 lr_config = dict(
-    policy='CosineAnnealing',
+    policy='step',
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
-    min_lr_ratio=1e-3
+    by_epoch=True,
+    step=[22, 24],
+    gamma=0.2
 )
-total_epochs = 48
+total_epochs = 24
 batch_size = 8
 
 # load pretrained weights

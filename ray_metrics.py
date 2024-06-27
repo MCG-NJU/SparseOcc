@@ -10,6 +10,7 @@ from loaders.ego_pose_dataset import EgoPoseDataset
 from configs.r50_nuimg_704x256_8f import occ_class_names as occ3d_class_names
 from configs.r50_nuimg_704x256_8f_openocc import occ_class_names as openocc_class_names
 
+
 def main(args):
     data_infos = mmcv.load(os.path.join(args.data_root, 'nuscenes_infos_val.pkl'))['infos']
     gt_filepaths = sorted(glob.glob(os.path.join(args.data_root, args.data_type, '*/*/*.npz')))

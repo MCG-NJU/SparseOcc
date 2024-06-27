@@ -40,7 +40,8 @@ class SparseOccTransformer(BaseModule):
             num_classes=num_classes,
             pc_range=pc_range,
             semantic=True,
-            topk=topk_training if self.training else topk_testing,
+            topk_training=topk_training,
+            topk_testing=topk_testing
         )
         self.decoder = MaskFormerOccDecoder(
             embed_dims=embed_dims,

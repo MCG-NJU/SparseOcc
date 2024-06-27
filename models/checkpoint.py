@@ -1,4 +1,5 @@
-# https://pytorch.org/docs/stable/_modules/torch/utils/checkpoint.html#checkpoint
+# This page is completely copied from https://pytorch.org/docs/stable/_modules/torch/utils/checkpoint.html#checkpoint
+# If you are using torch 2.0 or higher, you can safely delete this page and import the related functions from official PyTorch
 
 import torch
 import warnings
