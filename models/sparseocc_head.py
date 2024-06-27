@@ -1,13 +1,18 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from mmdet.models import HEADS
 from mmcv.runner import force_fp32, auto_fp16
 from mmdet.models.builder import build_loss
 from mmdet.models.utils import build_transformer
 from .matcher import HungarianMatcher
-from .loss_utils import CE_ssc_loss, lovasz_softmax, get_voxel_decoder_loss_input, nusc_class_frequencies
+from .loss_utils import CE_ssc_loss, lovasz_softmax, get_voxel_decoder_loss_input
+
+
+NUSC_CLASS_FREQ = np.array([
+    944004, 1897170, 152386, 2391677, 16957802, 724139, 189027, 2074468, 413451, 2384460,
+    5916653, 175883646, 4275424, 51393615, 61411620, 105975596, 116424404, 1892500630
+])
 
 
 @HEADS.register_module()
@@ -35,17 +40,14 @@ class SparseOccHead(nn.Module):
         self.criterions = {k: build_loss(loss_cfg) for k, loss_cfg in loss_cfgs.items()}
         self.matcher = HungarianMatcher(cost_class=2.0, cost_mask=5.0, cost_dice=5.0)
 
-        self.class_weights = torch.from_numpy(1 / np.log(nusc_class_frequencies + 0.001))
+        self.class_weights = torch.from_numpy(1 / np.log(NUSC_CLASS_FREQ + 0.001))
 
     def init_weights(self):
         self.transformer.init_weights()
 
     @auto_fp16(apply_to=('mlvl_feats'))
     def forward(self, mlvl_feats, img_metas):
-        occ_preds, mask_preds, class_preds = self.transformer(
-            mlvl_feats,
-            img_metas=img_metas,
-        )
+        occ_preds, mask_preds, class_preds = self.transformer(mlvl_feats, img_metas=img_metas)
         
         return {
             'occ_preds': occ_preds, 
@@ -110,7 +112,7 @@ class SparseOccHead(nn.Module):
         # drop instances if it has no positive voxels
         for b in range(B):
             instance_count = instance_class_ids[b].shape[0]
-            instance_voxel_counts = torch.bincount(voxel_instances[b])  # [255]
+            instance_voxel_counts = torch.bincount(voxel_instances[b].long())  # [255]
             id_map = torch.cumsum(instance_voxel_counts > 0, dim=0) - 1
             id_map[255] = 255  # empty space still has an id of 255
             voxel_instances[b] = id_map[voxel_instances[b].long()]
@@ -153,7 +155,7 @@ class SparseOccHead(nn.Module):
         
         cls_score, cls_id = torch.max(semseg, dim=1)
         cls_id[cls_score < 0.01] = self.num_classes - 1
-        return cls_id         # B, N
+        return cls_id  # [B, N]
     
     def merge_panoseg(self, mask_cls, mask_pred):
         pano_inst, pano_sem = [], []
@@ -226,4 +228,4 @@ class SparseOccHead(nn.Module):
         instance_seg = instance_seg.unsqueeze(0)
         semantic_seg = semantic_seg.unsqueeze(0)
         
-        return instance_seg, semantic_seg   # B, N
+        return instance_seg, semantic_seg  # [B, N]

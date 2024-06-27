@@ -4,34 +4,8 @@ import torch.nn.functional as F
 from mmdet.models.builder import LOSSES, build_loss
 from mmdet.core import reduce_mean
 from .utils import sparse2dense
-import numpy as np
 from torch.cuda.amp import autocast
 from torch.autograd import Variable
-try:
-    from itertools import  ifilterfalse
-except ImportError: # py3k
-    from itertools import  filterfalse as ifilterfalse
-
-nusc_class_frequencies = np.array([
-    944004,
-    1897170,
-    152386,
-    2391677,
-    16957802,
-    724139,
-    189027,
-    2074468,
-    413451,
-    2384460,
-    5916653,
-    175883646,
-    4275424,
-    51393615,
-    61411620,
-    105975596,
-    116424404,
-    1892500630
- ])
 
 
 def get_voxel_decoder_loss_input(voxel_semantics, occ_loc_i, seg_pred_i, scale, num_classes=18):
@@ -186,7 +160,7 @@ dice_loss_jit = torch.jit.script(
 )  # type: torch.jit.ScriptModule
 
 
-# borrowed from https://github.com/facebookresearch/Mask2Former/blob/main/mask2former/modeling/criterion.py#L48
+# https://github.com/facebookresearch/Mask2Former/blob/main/mask2former/modeling/criterion.py#L48
 def sigmoid_ce_loss(
         inputs: torch.Tensor,
         targets: torch.Tensor,
@@ -218,6 +192,7 @@ sigmoid_ce_loss_jit = torch.jit.script(
     sigmoid_ce_loss
 )  # type: torch.jit.ScriptModule
 
+
 def CE_ssc_loss(pred, target, class_weights=None, ignore_index=255):
     """
     :param: prediction: the predicted tensor, must be [BS, C, ...]
@@ -226,13 +201,11 @@ def CE_ssc_loss(pred, target, class_weights=None, ignore_index=255):
     criterion = nn.CrossEntropyLoss(
         weight=class_weights, ignore_index=ignore_index, reduction="mean"
     )
-    # from IPython import embed
-    # embed()
-    # exit()
     with autocast(False):
         loss = criterion(pred, target.long())
 
     return loss
+
 
 # https://github.com/NVlabs/FB-BEV/blob/832bd81866823a913a4c69552e1ca61ae34ac211/mmdet3d/models/fbbev/modules/occ_loss_utils/lovasz_softmax.py#L22
 def lovasz_grad(gt_sorted):
@@ -248,6 +221,7 @@ def lovasz_grad(gt_sorted):
     if p > 1: # cover 1-pixel case
         jaccard[1:p] = jaccard[1:p] - jaccard[0:-1]
     return jaccard
+
 
 # https://github.com/NVlabs/FB-BEV/blob/832bd81866823a913a4c69552e1ca61ae34ac211/mmdet3d/models/fbbev/modules/occ_loss_utils/lovasz_softmax.py#L157
 def lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=None):
@@ -267,6 +241,7 @@ def lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=No
         with autocast(False):
             loss = lovasz_softmax_flat(*flatten_probas(probas, labels, ignore), classes=classes)
     return loss
+
 
 # https://github.com/NVlabs/FB-BEV/blob/832bd81866823a913a4c69552e1ca61ae34ac211/mmdet3d/models/fbbev/modules/occ_loss_utils/lovasz_softmax.py#L176
 def lovasz_softmax_flat(probas, labels, classes='present'):
@@ -299,6 +274,7 @@ def lovasz_softmax_flat(probas, labels, classes='present'):
         losses.append(torch.dot(errors_sorted, Variable(lovasz_grad(fg_sorted))))
     return mean(losses)
 
+
 # https://github.com/NVlabs/FB-BEV/blob/832bd81866823a913a4c69552e1ca61ae34ac211/mmdet3d/models/fbbev/modules/occ_loss_utils/lovasz_softmax.py#L207
 def flatten_probas(probas, labels, ignore=None):
     """
@@ -329,7 +305,8 @@ def flatten_probas(probas, labels, ignore=None):
     vlabels = labels[valid]
     return vprobas, vlabels
 
-# modified from https://github.com/facebookresearch/Mask2Former/blob/main/mask2former/modeling/criterion.py#L90
+
+# https://github.com/facebookresearch/Mask2Former/blob/main/mask2former/modeling/criterion.py#L90
 @LOSSES.register_module()
 class Mask2FormerLoss(nn.Module):
     def __init__(self, 
@@ -423,17 +400,12 @@ class Mask2FormerLoss(nn.Module):
         ).mean()
 
 # --------------------------- HELPER FUNCTIONS ---------------------------
-def isnan(x):
-    return x != x
-
-
-def mean(l, ignore_nan=False, empty=0):
+def mean(l, empty=0):
     """
     nanmean compatible with generators.
     """
     l = iter(l)
-    if ignore_nan:
-        l = ifilterfalse(isnan, l)
+    
     try:
         n = 1
         acc = next(l)
@@ -441,8 +413,11 @@ def mean(l, ignore_nan=False, empty=0):
         if empty == 'raise':
             raise ValueError('Empty mean')
         return empty
+    
     for n, v in enumerate(l, 2):
         acc += v
+    
     if n == 1:
         return acc
+    
     return acc / n

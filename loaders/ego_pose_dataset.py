@@ -12,6 +12,7 @@ def trans_matrix(T, R):
     return tm
 
 
+# A helper dataset for RayIoU. It is NOT used during training.
 class EgoPoseDataset(Dataset):
     def __init__(self, data_infos):
         super(EgoPoseDataset, self).__init__()

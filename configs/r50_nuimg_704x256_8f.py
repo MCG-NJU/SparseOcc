@@ -42,8 +42,6 @@ _num_frames_ = 8
 _num_queries_ = 100
 _topk_training_ = [4000, 16000, 64000]
 _topk_testing_ = [2000, 8000, 32000]
-#_topk_training_ = _topk_testing_
-
 
 model = dict(
     type='SparseOcc',
@@ -51,7 +49,6 @@ model = dict(
         img_color_aug=True,  # Move some augmentations to GPU
         img_norm_cfg=img_norm_cfg,
         img_pad_cfg=dict(size_divisor=32)),
-    use_grid_mask=False,
     use_mask_camera=False,
     img_backbone=dict(
         type='ResNet',
@@ -159,7 +156,8 @@ data = dict(
         pipeline=train_pipeline,
         classes=det_class_names,
         modality=input_modality,
-        test_mode=False),
+        test_mode=False
+    ),
     val=dict(
         type=dataset_type,
         data_root=dataset_root,
@@ -168,7 +166,8 @@ data = dict(
         pipeline=test_pipeline,
         classes=det_class_names,
         modality=input_modality,
-        test_mode=True),
+        test_mode=True
+    ),
     test=dict(
         type=dataset_type,
         data_root=dataset_root,
@@ -177,7 +176,8 @@ data = dict(
         pipeline=test_pipeline,
         classes=det_class_names,
         modality=input_modality,
-        test_mode=True),
+        test_mode=True
+    ),
 )
 
 optimizer = dict(
@@ -205,10 +205,8 @@ total_epochs = 24
 batch_size = 8
 
 # load pretrained weights
-# load_from = 'pretrain/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth'
-# revise_keys = [('backbone', 'img_backbone')]
-load_from = 'pretrain/r50_nuimg_704x256.pth'
-revise_keys = None
+load_from = 'pretrain/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth'
+revise_keys = [('backbone', 'img_backbone')]
 
 # resume the last training
 resume_from = None

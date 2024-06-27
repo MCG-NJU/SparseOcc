@@ -1,14 +1,14 @@
 import os
 import mmcv
-import glob
+import torch
 import numpy as np
 from mmdet.datasets.builder import PIPELINES
 from numpy.linalg import inv
 from mmcv.runner import get_dist_info
 from mmcv.parallel import DataContainer as DC
 from mmdet.datasets.pipelines import to_tensor
-import torch
 from torchvision.transforms.functional import rotate
+
 
 def compose_lidar2img(ego2global_translation_curr,
                       ego2global_rotation_curr,
@@ -222,7 +222,6 @@ class LoadOccGTFromFile(object):
         results['instance_class_ids'] = DC(to_tensor(final_instance_class_ids))
 
         if results.get('rotate_bda', False):
-            
             semantics = torch.from_numpy(semantics).permute(2, 0, 1)  # [16, 200, 200]
             semantics = rotate(semantics, results['rotate_bda'], fill=255).permute(1, 2, 0)  # [200, 200, 16]
             results['voxel_semantics'] = semantics.numpy()
@@ -241,7 +240,8 @@ class LoadOccGTFromFile(object):
 
         return results
 
-# Modify from https://github.com/HuangJunJie2017/BEVDet/blob/58c2587a8f89a1927926f0bdb6cde2917c91a9a5/mmdet3d/datasets/pipelines/loading.py#L1177
+
+# https://github.com/HuangJunJie2017/BEVDet/blob/58c2587a8f89a1927926f0bdb6cde2917c91a9a5/mmdet3d/datasets/pipelines/loading.py#L1177
 @PIPELINES.register_module()
 class BEVAug(object):
     def __init__(self, bda_aug_conf, classes, is_train=True):
@@ -265,12 +265,6 @@ class BEVAug(object):
 
     def bev_transform(self, rotate_angle, scale_ratio, flip_dx, flip_dy):
         """
-        Args:
-            rotate_angle:
-            scale_ratio:
-            flip_dx: bool
-            flip_dy: bool
-
         Returns:
             rot_mat: (3, 3)
         """
@@ -282,6 +276,7 @@ class BEVAug(object):
         scale_mat = torch.Tensor([[scale_ratio, 0, 0], [0, scale_ratio, 0],
                                   [0, 0, scale_ratio]])
         flip_mat = torch.Tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+
         if flip_dx:
             flip_mat = flip_mat @ torch.Tensor([[-1, 0, 0], [0, 1, 0],
                                                 [0, 0, 1]])
@@ -297,7 +292,7 @@ class BEVAug(object):
 
         bda_mat = torch.zeros(4, 4)
         bda_mat[3, 3] = 1
-       
+
         # bda_rot: (3, 3)
         bda_rot = self.bev_transform(rotate_bda, scale_bda, flip_dx, flip_dy)
         bda_mat[:3, :3] = bda_rot

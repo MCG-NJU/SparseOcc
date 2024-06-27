@@ -6,13 +6,12 @@ from mmcv.runner.fp16_utils import cast_tensor_type
 from mmcv.runner import force_fp32, auto_fp16
 from mmdet.models import DETECTORS
 from mmdet3d.models.detectors.mvx_two_stage import MVXTwoStageDetector
-from .utils import GridMask, pad_multiple, GpuPhotoMetricDistortion
+from .utils import pad_multiple, GpuPhotoMetricDistortion
 
 
 @DETECTORS.register_module()
 class SparseOcc(MVXTwoStageDetector):
     def __init__(self,
-                 use_grid_mask=False,
                  pts_voxel_layer=None,
                  pts_voxel_encoder=None,
                  pts_middle_encoder=None,
@@ -37,8 +36,6 @@ class SparseOcc(MVXTwoStageDetector):
                              pts_bbox_head, img_roi_head, img_rpn_head,
                              train_cfg, test_cfg, pretrained)
 
-        self.grid_mask = GridMask(ratio=0.5, prob=0.7)
-        self.use_grid_mask = use_grid_mask
         self.use_mask_camera = use_mask_camera
         self.fp16_enabled = False
         self.data_aug = data_aug
@@ -49,9 +46,6 @@ class SparseOcc(MVXTwoStageDetector):
 
     @auto_fp16(apply_to=('img'), out_fp32=True)
     def extract_img_feat(self, img):
-        if self.use_grid_mask:
-            img = self.grid_mask(img)
-
         img_feats = self.img_backbone(img)
 
         if isinstance(img_feats, dict):

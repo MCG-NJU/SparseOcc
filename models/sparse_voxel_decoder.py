@@ -7,6 +7,7 @@ from .utils import DUMP, generate_grid, batch_indexing
 from .bbox.utils import encode_bbox
 import torch.nn.functional as F
 
+
 def index2point(coords, pc_range, voxel_size):
     """
     coords: [B, N, 3], int
@@ -134,14 +135,6 @@ class SparseVoxelDecoder(BaseModule):
             query_feat = self.lift_feat_heads[i](query_feat)  # [B, N, 8C]
             query_feat_2x, query_coord_2x = upsample(query_feat, query_coord, interval // 2)
 
-            # sparsify
-            # occ_pred_2x = self.occ_pred_heads[i](query_feat_2x)  # [B, N*8, 1]
-            # indices = torch.topk(occ_pred_2x.squeeze(-1), k=topk[i], dim=1)[1]  # [B, K]
-
-            # occ_pred_2x = batch_indexing(occ_pred_2x, indices, layout='channel_last')  # [B, K, 1]
-            # query_coord_2x = batch_indexing(query_coord_2x, indices, layout='channel_last')  # [B, K, 3]
-            # query_feat_2x = batch_indexing(query_feat_2x, indices, layout='channel_last')  # [B, K, C]
-
             if self.semantic:
                 seg_pred_2x = self.seg_pred_heads[i](query_feat_2x)  # [B, K, CLS]
             else:
@@ -155,7 +148,6 @@ class SparseVoxelDecoder(BaseModule):
             query_feat_2x = batch_indexing(query_feat_2x, indices, layout='channel_last')  # [B, K, C]
             seg_pred_2x = batch_indexing(seg_pred_2x, indices, layout='channel_last')  # [B, K, CLS]
 
-            # TODO: up_coords should be interval=1, scaling should be removed
             occ_preds.append((
                 torch.div(query_coord_2x, interval // 2, rounding_mode='trunc').long(),
                 None,

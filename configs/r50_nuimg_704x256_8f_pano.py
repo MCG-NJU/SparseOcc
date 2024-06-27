@@ -65,11 +65,14 @@ data = dict(
     workers_per_gpu=8,
     train=dict(
         pipeline=train_pipeline,
-        occ_gt_root=occ_gt_root),
+        occ_gt_root=occ_gt_root
+    ),
     val=dict(
         pipeline=test_pipeline,
-        occ_gt_root=occ_gt_root),
+        occ_gt_root=occ_gt_root
+    ),
     test=dict(
         pipeline=test_pipeline,
-        occ_gt_root=occ_gt_root),
+        occ_gt_root=occ_gt_root
+    ),
 )

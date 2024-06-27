@@ -2,11 +2,23 @@
 
 This is the official PyTorch implementation for our paper:
 
-> [**SparseOcc: Fully Sparse 3D Occupancy Prediction**](https://arxiv.org/abs/2312.17118)<br>
+> [**Fully Sparse 3D Panoptic Occupancy Prediction**](https://arxiv.org/abs/2312.17118)<br>
 > :school: Presented by Nanjing University and Shanghai AI Lab<br>
 > :email: Primary contact: Haisong Liu (afterthat97@gmail.com)<br>
 > :trophy: [CVPR 2024 Autonomous Driving Challenge - Occupancy and Flow](https://opendrivelab.com/challenge2024/#occupancy_and_flow)<br>
 > :book: 第三方中文解读: [自动驾驶之心](https://zhuanlan.zhihu.com/p/675811281)，[AIming](https://zhuanlan.zhihu.com/p/691549750)。谢谢你们！
+
+## :warning: Important Notes
+There is concurrent work titled ‘SparseOcc: Rethinking Sparse Latent Representation’ by Tang et al., which shares the same name SparseOcc with our work. If you cite our research, please ensure that you reference the correct version (arXiv **2312.17118**, authored by **Liu et al.**):
+
+```
+@article{liu2023fully,
+  title={Fully sparse 3d panoptic occupancy prediction},
+  author={Liu, Haisong and Wang, Haiguang and Chen, Yang and Yang, Zetong and Zeng, Jia and Chen, Li and Wang, Limin},
+  journal={arXiv preprint arXiv:2312.17118},
+  year={2023}
+}
+```
 
 ## Highlights
 
@@ -18,21 +30,34 @@ This is the official PyTorch implementation for our paper:
 
 ![](asserts/rayiou.jpg)
 
+Some FAQs from the community about the evaluation metrics:
+
+1. **Why does training with visible masks result in significant improvements in the old mIoU metric, but not in the new RayIoU metric?** As mentioned in the paper, when using the visible mask during training, the area behind the surface won't be supervised, so the model tends to fill this area with duplicated predictions, leading to a thicker surface. The old metric inconsistently penalizes along the depth axis when the prediction has a thick surface. Thus, this ''imporovement'' is mainly due to the vulnerability of old metric.
+2. **Why SparseOcc cannot exploit the vulnerability of the old metrics?** As SparseOcc employs a fully sparse architecture, it always predicts a thin surface. Thus, there are two ways for a fair comparison: (a) use the old metric, but all methods must predict a thin surface, which implies they cannot use the visible mask during training; (b) use RayIoU, as it is more reasonable and can fairly compare thick or thin surface. Our method achieves SOTA performance on both cases.
+3. **Does RayIoU overlook interior reconstruction?** Firstly, we are unable to obtain the interior occupancy ground-truth. This is because the ground-truth is derived from voxelizing LiDAR point clouds, and LiDARs are only capable of scanning the thin surface of an object. Secondly, the query ray in RayIoU can originate from any position within the scene (see the figure above). This allows it to evaluate the overall reconstruction performance, unlike depth estimation. We would like to emphasize that the evaluation logic of RayIoU aligns with the process of ground-truth generation.
+
+If you have other questions, feel free to contact me (Haisong Liu, afterthat97@gmail.com).
+
 ## News
 
-* 2024-05-29: We add support for [OpenOcc v2](configs/r50_nuimg_704x256_8f_openocc.py) dataset (without occupancy flow).
-* 2024-04-11: The panoptic version of SparseOcc ([configs/r50_nuimg_704x256_8f_pano.py](configs/r50_nuimg_704x256_8f_pano.py)) is released.
-* 2024-04-09: An updated arXiv version [https://arxiv.org/abs/2312.17118v3](https://arxiv.org/abs/2312.17118v3) has been released.
-* 2024-03-31: We release the code and pretrained weights.
-* 2023-12-30: We release the paper.
+* **2024-06-27**: SparseOcc v1.1 is released. In this change, we introduce BEV data augmentation (BDA) and Lovasz-Softmax loss to further enhance the performance. Compared with [v1.0](https://github.com/MCG-NJU/SparseOcc/tree/v1.0) (35.0 RayIoU with 48 epochs), SparseOcc v1.1 can achieve 36.8 RayIoU with 24 epochs!
+* **2024-05-29**: We add support for [OpenOcc v2](configs/r50_nuimg_704x256_8f_openocc.py) dataset (without occupancy flow).
+* **2024-04-11**: The panoptic version of SparseOcc ([configs/r50_nuimg_704x256_8f_pano.py](configs/r50_nuimg_704x256_8f_pano.py)) is released.
+* **2024-04-09**: An updated arXiv version [https://arxiv.org/abs/2312.17118v3](https://arxiv.org/abs/2312.17118v3) has been released.
+* **2024-03-31**: We release the code and pretrained weights.
+* **2023-12-30**: We release the paper.
 
 ## Model Zoo
 
-| Setting  | Pretrain | Training Cost | RayIoU | RayPQ | FPS | Weights |
-|----------|:--------:|:-------------:|:------:|:-----:|:---:|:-------:|
-| [r50_nuimg_704x256_8f](configs/r50_nuimg_704x256_8f.py) | [nuImg](https://download.openmmlab.com/mmdetection3d/v0.1.0_models/nuimages_semseg/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth) | 1d4h, ~12GB Memory | 35.0 | - | 17.3 | [github](https://github.com/MCG-NJU/SparseOcc/releases/download/v1.0/sparseocc_r50_nuimg_704x256_8f.pth) |
-| [r50_nuimg_704x256_8f_pano](configs/r50_nuimg_704x256_8f_pano.py) | [nuImg](https://download.openmmlab.com/mmdetection3d/v0.1.0_models/nuimages_semseg/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth) | 1d4h, ~12GB Memory | 34.5 | 14.0 | 17.3 | [github](https://github.com/MCG-NJU/SparseOcc/releases/download/v1.0/sparseocc_r50_nuimg_704x256_8f_pano.pth) |
+These results are from our latest version, v1.1, which outperforms the results reported in the paper. Additionally, our implementation differs slightly from the original paper. If you wish to reproduce the paper exactly, please refer to the [v1.0](https://github.com/MCG-NJU/SparseOcc/tree/v1.0) tag.
 
+| Setting  | Epochs | Training Cost | RayIoU | RayPQ | FPS | Weights |
+|----------|:--------:|:-------------:|:------:|:-----:|:---:|:-------:|
+| [r50_nuimg_704x256_8f](configs/r50_nuimg_704x256_8f.py) | 24 | 15h, ~12GB | 36.8 | - | 17.3 | [github](https://github.com/MCG-NJU/SparseOcc/releases/download/v1.1/sparseocc_r50_nuimg_704x256_8f_24e_v1.1.pth) |
+| [r50_nuimg_704x256_8f_60e](configs/r50_nuimg_704x256_8f_60e.py) | 60 | 37h, ~12GB | 37.7 | - | 17.3 | [github](https://github.com/MCG-NJU/SparseOcc/releases/download/v1.1/sparseocc_r50_nuimg_704x256_8f_60e_v1.1.pth) |
+| [r50_nuimg_704x256_8f_pano](configs/r50_nuimg_704x256_8f_pano.py) | 24 | 15h, ~12GB | 35.9 | 14.0 | 17.3 | [github](https://github.com/MCG-NJU/SparseOcc/releases/download/v1.1/sparseocc_r50_nuimg_704x256_8f_pano_24e_v1.1.pth) |
+
+* The backbone is pretrained on [nuImages](https://download.openmmlab.com/mmdetection3d/v0.1.0_models/nuimages_semseg/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth). Download the weights to `pretrain/xxx.pth` before you start training.
 * FPS is measured with Intel(R) Xeon(R) Platinum 8369B CPU and NVIDIA A100-SXM4-80GB GPU (PyTorch `fp32` backend, including data loading).
 * We will release more settings in the future.
 
@@ -46,14 +71,6 @@ Install PyTorch 2.0 + CUDA 11.8:
 conda create -n sparseocc python=3.8
 conda activate sparseocc
 conda install pytorch==2.0.0 torchvision==0.15.0 pytorch-cuda=11.8 -c pytorch -c nvidia
-```
-
-or PyTorch 1.10.2 + CUDA 10.2 for older GPUs:
-
-```
-conda create -n sparseocc python=3.8
-conda activate sparseocc
-conda install pytorch==1.10.2 torchvision==0.11.3 cudatoolkit=10.2 -c pytorch
 ```
 
 Install other dependencies:
