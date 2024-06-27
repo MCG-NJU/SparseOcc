@@ -9,7 +9,10 @@ This is the official PyTorch implementation for our paper:
 > :book: 第三方中文解读: [自动驾驶之心](https://zhuanlan.zhihu.com/p/675811281)，[AIming](https://zhuanlan.zhihu.com/p/691549750)。谢谢你们！
 
 ## :warning: Important Notes
-There is concurrent work titled ‘SparseOcc: Rethinking Sparse Latent Representation’ by Tang et al., which shares the same name SparseOcc with our work. If you cite our research, please ensure that you reference the correct version (arXiv **2312.17118**, authored by **Liu et al.**):
+
+There is another concurrent project titled *''SparseOcc: Rethinking sparse latent representation for vision-based semantic occupancy prediction''* by Tang et al., which shares the same name SparseOcc with ours. However, this repository is **unrelated** to the aforementioned paper.
+
+If you cite our research, please ensure that you reference the correct version (arXiv **2312.17118**, authored by **Liu et al.**) below:
 
 ```
 @article{liu2023fully,
