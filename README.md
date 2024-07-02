@@ -6,13 +6,13 @@ This is the official PyTorch implementation for our paper:
 > :school: Presented by Nanjing University and Shanghai AI Lab<br>
 > :email: Primary contact: Haisong Liu (afterthat97@gmail.com)<br>
 > :trophy: [CVPR 2024 Autonomous Driving Challenge - Occupancy and Flow](https://opendrivelab.com/challenge2024/#occupancy_and_flow)<br>
-> :book: 第三方中文解读: [自动驾驶之心](https://zhuanlan.zhihu.com/p/675811281)，[AIming](https://zhuanlan.zhihu.com/p/691549750)。谢谢你们！
+> :book: 第三方中文解读: [AIming](https://zhuanlan.zhihu.com/p/691549750), [自动驾驶之心](https://zhuanlan.zhihu.com/p/675811281)
 
 ## :warning: Important Notes
 
 There is another concurrent project titled *''SparseOcc: Rethinking sparse latent representation for vision-based semantic occupancy prediction''* by Tang et al., which shares the same name SparseOcc with ours. However, this repository is **unrelated** to the aforementioned paper.
 
-If you cite our research, please ensure that you reference the correct version (arXiv **2312.17118**, authored by **Liu et al.**) below:
+If you cite our research, please ensure that you reference the correct version (arXiv **2312.17118**, authored by **Liu et al.**):
 
 ```
 @article{liu2023fully,
@@ -22,6 +22,18 @@ If you cite our research, please ensure that you reference the correct version (
   year={2023}
 }
 ```
+
+> In arXiv 2312.17118v3, we removed the word "panoptic" from the title. However, Google Scholar's database has not been updated and still shows the old one. Therefore, we still recommend citing the old title - "Fully sparse 3d panoptic occupancy prediction" - so that Google Scholar can index it correctly. Thank you all.
+
+## News
+
+* **2024-07-01**: SparseOcc is accepted to ECCV 2024.
+* **2024-06-27**: SparseOcc v1.1 is released. In this change, we introduce BEV data augmentation (BDA) and Lovasz-Softmax loss to further enhance the performance. Compared with [v1.0](https://github.com/MCG-NJU/SparseOcc/tree/v1.0) (35.0 RayIoU with 48 epochs), SparseOcc v1.1 can achieve 36.8 RayIoU with 24 epochs!
+* **2024-05-29**: We add support for [OpenOcc v2](configs/r50_nuimg_704x256_8f_openocc.py) dataset (without occupancy flow).
+* **2024-04-11**: The panoptic version of SparseOcc ([configs/r50_nuimg_704x256_8f_pano.py](configs/r50_nuimg_704x256_8f_pano.py)) is released.
+* **2024-04-09**: An updated arXiv version [https://arxiv.org/abs/2312.17118v3](https://arxiv.org/abs/2312.17118v3) has been released.
+* **2024-03-31**: We release the code and pretrained weights.
+* **2023-12-30**: We release the paper.
 
 ## Highlights
 
@@ -40,16 +52,6 @@ Some FAQs from the community about the evaluation metrics:
 3. **Does RayIoU overlook interior reconstruction?** Firstly, we are unable to obtain the interior occupancy ground-truth. This is because the ground-truth is derived from voxelizing LiDAR point clouds, and LiDARs are only capable of scanning the thin surface of an object. Secondly, the query ray in RayIoU can originate from any position within the scene (see the figure above). This allows it to evaluate the overall reconstruction performance, unlike depth estimation. We would like to emphasize that the evaluation logic of RayIoU aligns with the process of ground-truth generation.
 
 If you have other questions, feel free to contact me (Haisong Liu, afterthat97@gmail.com).
-
-## News
-
-* **2024-07-01**: SparseOcc is accepted to ECCV 2024.
-* **2024-06-27**: SparseOcc v1.1 is released. In this change, we introduce BEV data augmentation (BDA) and Lovasz-Softmax loss to further enhance the performance. Compared with [v1.0](https://github.com/MCG-NJU/SparseOcc/tree/v1.0) (35.0 RayIoU with 48 epochs), SparseOcc v1.1 can achieve 36.8 RayIoU with 24 epochs!
-* **2024-05-29**: We add support for [OpenOcc v2](configs/r50_nuimg_704x256_8f_openocc.py) dataset (without occupancy flow).
-* **2024-04-11**: The panoptic version of SparseOcc ([configs/r50_nuimg_704x256_8f_pano.py](configs/r50_nuimg_704x256_8f_pano.py)) is released.
-* **2024-04-09**: An updated arXiv version [https://arxiv.org/abs/2312.17118v3](https://arxiv.org/abs/2312.17118v3) has been released.
-* **2024-03-31**: We release the code and pretrained weights.
-* **2023-12-30**: We release the paper.
 
 ## Model Zoo
 
