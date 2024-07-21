@@ -6,7 +6,8 @@ This is the official PyTorch implementation for our paper:
 > :school: Presented by Nanjing University and Shanghai AI Lab<br>
 > :email: Primary contact: Haisong Liu (afterthat97@gmail.com)<br>
 > :trophy: [CVPR 2024 Autonomous Driving Challenge - Occupancy and Flow](https://opendrivelab.com/challenge2024/#occupancy_and_flow)<br>
-> :book: 第三方中文解读: [AIming](https://zhuanlan.zhihu.com/p/691549750), [自动驾驶之心](https://zhuanlan.zhihu.com/p/675811281)
+> :book: 中文解读（官方）：https://zhuanlan.zhihu.com/p/709576252<br>
+> :book: 中文解读（第三方）: [AIming](https://zhuanlan.zhihu.com/p/691549750), [自动驾驶之心](https://zhuanlan.zhihu.com/p/675811281)
 
 ## :warning: Important Notes
 
